@@ -1,3 +1,9 @@
+export function systemCacheBoundary(system: string): number {
+  const boundaries = ['\n\n# Memory\n', '\n\n# Environment\n']
+    .map((marker) => system.lastIndexOf(marker))
+    .filter((i) => i >= 0);
+  return Math.min(system.length, ...boundaries);
+}
 export function assembleSystemPrompt(opts: {
   base: string;
   instructions: { path: string; content: string }[];

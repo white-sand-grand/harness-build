@@ -4,6 +4,7 @@ import { renderTemplate } from '../util/template.ts';
 import type { HookCommand } from './command-types.ts';
 export function stopCheckHook(opts: {
   cwd: string;
+  home?: string;
   commands: HookCommand[];
   maxContinuations: number;
   template: string;
@@ -18,6 +19,7 @@ export function stopCheckHook(opts: {
           cwd: opts.cwd,
           timeoutSec: hook.timeoutSec ?? 120,
           signal: opts.signal,
+          env: opts.home === undefined ? undefined : { MH_HOME: opts.home },
         });
         if (r.exitCode === 0 && !r.timedOut && !r.aborted) continue;
         const outputTail = r.output.slice(-3000) + (r.timedOut ? '\n[timed out]' : '');

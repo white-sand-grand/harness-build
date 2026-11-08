@@ -1,4 +1,4 @@
-import type { Message, ModelInfo, Provider, Usage } from '../ai/index.ts';
+import type { Message, ModelInfo, Provider, Usage, CacheInfo } from '../ai/index.ts';
 import type { Hooks } from '../agent/index.ts';
 import { clearedText, summaryMessage, renderMessages } from '../session/index.ts';
 import { renderTemplate } from '../util/template.ts';
@@ -24,7 +24,7 @@ export function compactionHook(opts: {
   template: string;
   config: { enabled: boolean; clearAtRatio: number; compactAtRatio: number; keepRecentTokens: number };
   signal: AbortSignal;
-  onSummary?: (usage: Usage, latencyMs: number) => void;
+  onSummary?: (usage: Usage, latencyMs: number, cache?: CacheInfo) => void;
   onFailure?: (message: string) => void;
 }): Hooks {
   return {
@@ -58,7 +58,7 @@ export function compactionHook(opts: {
           opts.signal,
           () => {},
         );
-        opts.onSummary?.(out.usage, Date.now() - start);
+        opts.onSummary?.(out.usage, Date.now() - start, out.cache);
         const summary = out.content
           .filter((b) => b.type === 'text')
           .map((b) => b.text)

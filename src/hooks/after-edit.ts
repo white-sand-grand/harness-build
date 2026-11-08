@@ -7,6 +7,7 @@ import type { HookCommand } from './command-types.ts';
 export function afterEditHook(opts: {
   cwd: string;
   fileCwd?: string;
+  home?: string;
   commands: HookCommand[];
   signal: AbortSignal;
 }): Hooks {
@@ -22,7 +23,7 @@ export function afterEditHook(opts: {
           cwd: opts.cwd,
           timeoutSec: hook.timeoutSec ?? 30,
           signal: opts.signal,
-          env: { MH_FILE: path },
+          env: { MH_FILE: path, ...(opts.home === undefined ? {} : { MH_HOME: opts.home }) },
         });
         if (r.exitCode === 0 && !r.timedOut && !r.aborted) continue;
         current = {

@@ -56,6 +56,8 @@ node dist/cli/main.js -p '检查项目并修复失败的测试' --provider opena
 
 base URL 可以是站点根路径、以 `/v1` 结尾的路径，或完整的 `/v1/responses` 地址；客户端按需补齐路径。请求使用 `store: false`，由客户端保存和回传会话内容。
 
+`gpt-6.1-sol` 默认使用稳定指令缓存断点和跨请求诊断；兼容网关明确拒绝新参数时沿用兼容 Responses。缓存读取、写入和缺少报告的情况会分别展示，详见[提示缓存设计与排查](docs/prompt-caching.md)。
+
 Anthropic 使用 `--provider anthropic --model <model-id>`。鉴权依次取模型的 `apiKeyEnv`、`ANTHROPIC_API_KEY`、`ANTHROPIC_AUTH_TOKEN`；最后一种发送 Bearer token。`ANTHROPIC_BASE_URL` 可覆盖默认地址。
 
 密钥只放环境变量。配置中出现 `apiKey`、`token` 等字段会报错，错误信息不回显字段值。模型价格未知时显示 `n/a`；上下文默认 128000、输出默认 8192 是保守回退，实际窗口、价格和 thinking 能力应按所用端点的说明配置。
@@ -266,12 +268,14 @@ Analyze 只输入 dev 失败结果、对应会话记录和提示词副本，不�
 
 内部使用统一的消息、工具调用、流式事件和用量结构，由两个适配器转换为具体协议。通过原生 fetch 和 SSE 解析器处理流式响应，不依赖模型 SDK。
 
-| 适配器    | 请求方式                                                                                | 保留的信息                                                                     |
-| --------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| OpenAI    | `/v1/responses`，使用 `instructions`、`input`、function tools 和 `function_call_output` | 保存原生 output items，在后续请求中回传工具调用及加密推理；设置 `store: false` |
-| Anthropic | `/v1/messages`，使用 content blocks 和 `tool_result`                                    | 合并连续工具结果，保留 thinking/signature，设置提示缓存标记                    |
+| 适配器    | 请求方式                                                                                                               | 保留的信息                                                                     |
+| --------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| OpenAI    | `/v1/responses`，使用 `input`、function tools 和 `function_call_output`；系统提示用 `instructions` 或 developer 内容块 | 保存原生 output items，在后续请求中回传工具调用及加密推理；设置 `store: false` |
+| Anthropic | `/v1/messages`，使用 content blocks 和 `tool_result`                                                                   | 合并连续工具结果，保留 thinking/signature，设置提示缓存标记                    |
 
 流式解析处理 UTF-8 跨块、不同换行和多行 SSE data。网络/API 错误转换为统一错误结果；中断保留已收到的部分。429、部分服务端错误和网络错误只在尚未收到 SSE 事件时自动重试，最多 3 次，并遵守有上限的退避与 `Retry-After`；已经收到事件后不自动重发请求。
+
+用量以响应结束时的字段为准：Anthropic 兼容接口可以在最后修正开头的预估值，0 也是有效修正。普通输入、缓存读取和写入分别统计；未报告的缓存字段显示 `n/a`。`mh trace latest --json` 可以查看缓存报告状态、命中率和服务端给出的未命中原因。
 
 ### 发送给模型的项目背景
 
@@ -315,6 +319,8 @@ pnpm test:live
 
 WSL 使用同名环境变量的 `export` 写法。可通过 `MH_LIVE_PROVIDER=openai`、`MH_LIVE_MODEL=<id>` 和 OpenAI 环境变量切换到 Responses 验收。不设置 `MH_LIVE` 时明确显示 skip。完整改进流程可执行 `node scripts/live-improvement.ts`，它运行两组 8×2 尝试并保存比较结果。
 
+缓存另有独立的真实测试，默认不会随普通 live 验收启用。阶跃使用 `MH_LIVE_STEP_CACHE=1` 和 `test/live/step-cache.test.ts`；GPT-6.1 Sol 使用 `MH_LIVE_CACHE=1` 和 `test/live/cache.test.ts`，两者还需要 `MH_LIVE=1`。环境变量、检查含义和阶跃实测样例见[提示缓存指南](docs/prompt-caching.md#真实网关验收)。
+
 ## 设计取舍
 
 - **保持小而可读**：四个工具配合项目已有命令，零运行时第三方依赖，便于追踪一次任务的完整执行过程。
@@ -333,6 +339,7 @@ v1 暂不包含 MCP、全屏 TUI、原生子 agent 工具、后台任务服务�
 | [How to code Claude Code in ~200 lines of code](https://www.youtube.com/watch?v=s7ZzkdvCMDY) · [The Modern Software Developer 课程](https://www.themodernsoftware.dev/)                                                                | 从最小循环出发：模型决定工具调用，程序执行后把结果回传，再继续下一轮                         |
 | Mario Zechner：[Pi coding agent 设计复盘](https://mariozechner.at/posts/2025-11-30-pi-coding-agent/)                                                                                                                                   | 克制工具数量、分离模型接口与循环、保持内核简单；对应四工具和可替换的模型/提示词              |
 | OpenAI：[Harness engineering](https://openai.com/index/harness-engineering/)                                                                                                                                                           | 用仓库说明提供背景，把架构要求变成可执行检查；对应项目指令收集、分层检查和验证反馈           |
+| OpenAI：[Why we built the Responses API](https://developers.openai.com/blog/responses-api) · [Prompt caching](https://developers.openai.com/api/docs/guides/prompt-caching)                                                            | 保留原生推理状态、稳定输入前缀并观测真实缓存读写；对应 Responses 重放、缓存断点和诊断        |
 | Anthropic：[Writing effective tools for AI agents](https://www.anthropic.com/engineering/writing-tools-for-agents)                                                                                                                     | 工具名称、描述、参数和错误信息都服务于模型正确使用；对应工具契约、参数校验和可修正的错误提示 |
 | Anthropic：[Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents)                                                                                            | 只保留当前需要的信息；对应按需读取、旧结果清理、摘要和结构化笔记                             |
 | Anthropic：[The Components of Agent Memory](https://www.anthropic.com/research/components-of-agent-memory)                                                                                                                             | 从原始会话提炼笔记，再通过索引选择内容；对应文件记忆和 dream 整理流程                        |

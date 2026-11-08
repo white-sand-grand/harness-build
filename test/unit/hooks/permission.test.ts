@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, symlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { permissionHook, riskyCategory } from '../../../src/hooks/permission.ts';
-import { loadConfig, defaultConfig } from '../../../src/app/config.ts';
+import { loadConfig } from '../../../src/app/config.ts';
 import { trustHash } from '../../../src/hooks/trust.ts';
 import { matchesGlob } from '../../../src/util/glob.ts';
 import { createWriteTool, createBashTool } from '../../../src/tools/index.ts';

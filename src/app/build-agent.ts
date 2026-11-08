@@ -10,7 +10,7 @@ import { composeHooks, traceHooks } from '../hooks/compose.ts';
 import { afterEditHook } from '../hooks/after-edit.ts';
 import { stopCheckHook } from '../hooks/stop-check.ts';
 import { loadPrompts } from './prompts.ts';
-import { assembleSystemPrompt } from '../context/system-prompt.ts';
+import { assembleSystemPrompt, systemCacheBoundary } from '../context/system-prompt.ts';
 import { compactionHook } from '../context/compaction.ts';
 import { collectInstructions } from '../memory/agents-md.ts';
 import { spawnSync } from 'node:child_process';
@@ -90,6 +90,7 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
     provider,
     model,
     system,
+    systemCacheBoundary: systemCacheBoundary(system),
     tools,
     hooks: traceHooks(
       composeHooks(
@@ -100,8 +101,12 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           template: prompts.compact,
           config: config.compaction,
           signal: opts.signal ?? new AbortController().signal,
-          onSummary: (usage, latencyMs) =>
-            session.append({ type: 'trace', name: 'turn', data: { kind: 'compaction', usage, latencyMs } }),
+          onSummary: (usage, latencyMs, cache) =>
+            session.append({
+              type: 'trace',
+              name: 'turn',
+              data: { kind: 'compaction', usage, latencyMs, ...(cache ? { cache } : {}) },
+            }),
           onFailure: (message) =>
             session.append({ type: 'trace', name: 'hook', data: { hook: 'compaction', decision: 'failed', message } }),
         }),
@@ -118,12 +123,14 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
         afterEditHook({
           fileCwd: opts.cwd,
           cwd: projectRoot(opts.cwd),
+          home: opts.home,
           commands: config.hooks.afterEdit,
           signal: opts.signal ?? new AbortController().signal,
         }),
         offloadHook({ sessionDir: session.dir, ...config.toolOutput }),
         stopCheckHook({
           cwd: projectRoot(opts.cwd),
+          home: opts.home,
           commands: config.hooks.onStop,
           maxContinuations: config.hooks.maxStopContinuations,
           template: prompts.fragments.stopContinue,

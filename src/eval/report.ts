@@ -1,5 +1,5 @@
 import type { SessionEntry } from '../session/index.ts';
-import type { Usage } from '../ai/index.ts';
+import type { Usage, CacheInfo } from '../ai/index.ts';
 import { zeroUsage, addUsage } from '../ai/index.ts';
 import type { AttemptResult, EvalTask } from './task.ts';
 export function summarizeTrace(entries: SessionEntry[]) {
@@ -9,10 +9,38 @@ export function summarizeTrace(entries: SessionEntry[]) {
     ends = traces.filter((e) => e.name === 'agentEnd');
   const prices = ends.map((e) => e.data.cost),
     allPrices = prices.length > 0 && prices.every((n) => typeof n === 'number');
+  const usage = turns.reduce((sum, e) => (e.data.usage ? addUsage(sum, e.data.usage as Usage) : sum), zeroUsage());
+  const input = usage.input + usage.cacheRead + usage.cacheWrite;
+  const readReported =
+    turns.length > 0 &&
+    turns.every(
+      (e) =>
+        (e.data.cache as CacheInfo | undefined)?.readReported ??
+        Number((e.data.usage as Usage | undefined)?.cacheRead) > 0,
+    );
+  const writeReported =
+    turns.length > 0 &&
+    turns.every(
+      (e) =>
+        (e.data.cache as CacheInfo | undefined)?.writeReported ??
+        Number((e.data.usage as Usage | undefined)?.cacheWrite) > 0,
+    );
+  const misses = new Map<string, number>();
+  for (const turn of turns) {
+    const diagnostics = (turn.data.cache as CacheInfo | undefined)?.diagnostics;
+    if (diagnostics?.type === 'cache_miss' && diagnostics.reason)
+      misses.set(diagnostics.reason, (misses.get(diagnostics.reason) ?? 0) + 1);
+  }
   return {
     turns: turns.filter((e) => !e.data.kind).length,
     modelCalls: turns.length,
-    usage: turns.reduce((sum, e) => (e.data.usage ? addUsage(sum, e.data.usage as Usage) : sum), zeroUsage()),
+    usage,
+    cache: {
+      readReported,
+      writeReported,
+      hitRate: readReported && input > 0 ? usage.cacheRead / input : null,
+      misses: Object.fromEntries(misses),
+    },
     cost: allPrices ? prices.reduce<number>((sum, n) => sum + Number(n), 0) : undefined,
     toolCalls: tools.length,
     toolErrors: tools.filter((e) => e.data.isError).length,

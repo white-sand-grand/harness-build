@@ -25,6 +25,7 @@ const modelSchema = object({
   }),
   compat: object({
     includeEncryptedReasoning: bool,
+    promptCache: bool,
   }),
 });
 modelSchema.properties!.pricing!.required = ['input', 'output', 'cacheRead', 'cacheWrite'];

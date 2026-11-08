@@ -9,6 +9,18 @@ export type ThinkingBlock = { type: 'thinking'; text: string; signature?: string
 export type ToolCallBlock = { type: 'toolCall'; id: string; name: string; args: Record<string, unknown> };
 
 export type UserMessage = { role: 'user'; content: Array<TextBlock | ImageBlock> };
+export type PromptCacheDiagnostics = {
+  type: string;
+  reason?: string;
+  comparison_reusable_tokens?: number;
+  cache_missed_tokens?: number;
+};
+export type CacheInfo = {
+  readReported: boolean;
+  writeReported: boolean;
+  diagnostics?: PromptCacheDiagnostics;
+  compatibilityFallback?: boolean;
+};
 export type AssistantMessage = {
   role: 'assistant';
   content: Array<TextBlock | ThinkingBlock | ToolCallBlock>;
@@ -18,6 +30,8 @@ export type AssistantMessage = {
   provider: ProviderId;
   /** Native Responses output, retained verbatim for encrypted reasoning and item replay. */
   responsesOutput?: Record<string, unknown>[];
+  responsesId?: string;
+  cache?: CacheInfo;
   errorMessage?: string; // stopReason === 'error' 时必填，人类可读
 };
 export type ToolResultMessage = {
@@ -40,6 +54,8 @@ export type ThinkingLevel = 'off' | 'low' | 'medium' | 'high';
 export type ModelRequest = {
   model: ModelInfo;
   system: string;
+  /** Character offset ending the reusable system prefix; omitted means the whole system. */
+  systemCacheBoundary?: number;
   messages: Message[];
   tools: ToolSpec[];
   maxOutputTokens?: number; // 缺省用 model.maxOutputTokens
@@ -76,6 +92,8 @@ export type ModelInfo = {
 
 export type OpenAICompat = {
   includeEncryptedReasoning?: boolean;
+  /** Native Sol caching controls; false keeps legacy Responses gateway compatibility. */
+  promptCache?: boolean;
 };
 
 export type { JsonSchema } from '../util/jsonschema.ts';

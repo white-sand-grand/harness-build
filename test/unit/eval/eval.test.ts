@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, readFile, cp } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runEval, readResults } from '../../../src/eval/runner.ts';
 import { parseJudge } from '../../../src/eval/judge.ts';
 import { compareRuns } from '../../../src/eval/compare.ts';
@@ -10,7 +11,7 @@ import { summarizeTrace } from '../../../src/eval/report.ts';
 import { createSession } from '../../../src/session/index.ts';
 import { defaultConfig } from '../../../src/app/config.ts';
 import { defaultPromptsDir } from '../../../src/app/prompts.ts';
-import { zeroUsage } from '../../../src/ai/index.ts';
+import { memoryDir } from '../../../src/memory/memory-dir.ts';
 import { withTmpDir } from '../../helpers/tmp.ts';
 import { scripted } from '../../helpers/fake-provider.ts';
 import type { EvalTask } from '../../../src/eval/task.ts';
@@ -91,6 +92,59 @@ test('isolated MH_HOME per run', async () =>
     const before = process.env.MH_HOME,
       r = await runEval(options(d));
     assert.ok(r[0]?.sessionPath.startsWith(join(d, 'run', 'homes')));
+    assert.equal(process.env.MH_HOME, before);
+  }));
+test('concurrent attempts isolate MH_HOME in setup, tools, hooks, checks and nested CLI', async () =>
+  withTmpDir(async (d) => {
+    const root = await task(d, 'home-probe', {
+      setup: 'node probe.cjs setup',
+      check: { command: 'node probe.cjs check' },
+    });
+    const cli = fileURLToPath(new URL('../../../src/cli/main.ts', import.meta.url));
+    await writeFile(
+      join(root, 'files/probe.cjs'),
+      `const fs = require('node:fs');
+const stage = process.argv[2];
+const observation = { home: process.env.MH_HOME };
+if (stage === 'tool') observation.memory = require('node:child_process').execFileSync(
+  process.execPath, [${JSON.stringify(cli)}, 'memory', 'path'], { encoding: 'utf8', windowsHide: true }
+).trim();
+fs.writeFileSync(stage + '.json', JSON.stringify(observation));
+`,
+    );
+    const config = defaultConfig();
+    config.hooks.afterEdit = [{ match: '*.txt', command: 'node probe.cjs after-edit' }];
+    config.hooks.onStop = [{ command: 'node probe.cjs stop' }];
+    const before = process.env.MH_HOME;
+    const results = await runEval({
+      ...options(d),
+      config,
+      repeat: 2,
+      concurrency: 2,
+      providerFactory: () =>
+        scripted(
+          {
+            toolCalls: [
+              { name: 'bash', args: { command: 'node probe.cjs tool' } },
+              { name: 'write', args: { path: 'marker.txt', content: 'probe' } },
+            ],
+          },
+          { text: 'done' },
+        ),
+    });
+    assert.deepEqual(
+      results.map((r) => r.status),
+      ['pass', 'pass'],
+    );
+    for (const result of results) {
+      const home = join(d, 'run', 'homes', 'home-probe', String(result.attempt));
+      const workspace = join(d, 'run', 'workspaces', 'home-probe', String(result.attempt));
+      for (const stage of ['setup', 'tool', 'after-edit', 'stop', 'check']) {
+        const observed = JSON.parse(await readFile(join(workspace, stage + '.json'), 'utf8'));
+        assert.equal(observed.home, home, `${stage} home for attempt ${result.attempt}`);
+        if (stage === 'tool') assert.equal(observed.memory, memoryDir(home, workspace));
+      }
+    }
     assert.equal(process.env.MH_HOME, before);
   }));
 test('variant prompts dir is used', async () =>

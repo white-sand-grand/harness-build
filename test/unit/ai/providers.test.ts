@@ -4,7 +4,6 @@ import {
   AnthropicProvider,
   buildAnthropicBody,
   OpenAIProvider,
-  buildOpenAIBody,
   cost,
   resolveModel,
   zeroUsage,
@@ -106,6 +105,37 @@ test('maps usage incl. cache tokens', async () =>
       });
     },
   ));
+for (const [name, start, final, expected] of [
+  [
+    'final Anthropic usage corrects a provisional cache hit to zero',
+    { input_tokens: 1, output_tokens: 0, cache_read_input_tokens: 6812, cache_creation_input_tokens: 0 },
+    { input_tokens: 6813, output_tokens: 394, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+    { input: 6813, output: 394, cacheRead: 0, cacheWrite: 0 },
+  ],
+  [
+    'final Anthropic usage supplies cache counters omitted at message start',
+    { input_tokens: 6813, output_tokens: 0 },
+    { input_tokens: 413, output_tokens: 209, cache_read_input_tokens: 6400, cache_creation_input_tokens: 0 },
+    { input: 413, output: 209, cacheRead: 6400, cacheWrite: 0 },
+  ],
+] as const)
+  test(name, async () =>
+    withSSEServer(
+      () => {
+        const chunks = anthropicFixture([{ type: 'text' }]);
+        chunks[0] = sse({ type: 'message_start', message: { usage: start } });
+        chunks[chunks.length - 2] = sse({ type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: final });
+        return { chunks };
+      },
+      async (url) => {
+        const r = req();
+        r.model.baseUrl = url;
+        const result = await new AnthropicProvider().stream(r, new AbortController().signal, () => {});
+        assert.deepEqual(result.usage, expected);
+        assert.deepEqual(result.cache, { readReported: true, writeReported: true });
+      },
+    ),
+  );
 test('error event → stopReason error', async () =>
   withSSEServer(
     () => ({ chunks: [sse({ type: 'error', error: { message: 'bad model' } })] }),

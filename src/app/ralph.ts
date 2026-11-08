@@ -57,7 +57,12 @@ export async function runRalph(
     });
     if (run.reason === 'aborted') return result('aborted');
     if (run.reason === 'error') return result('error');
-    lastCheck = await runCommand(opts.checkCommand, { cwd: opts.cwd, timeoutSec: 120, signal: opts.signal });
+    lastCheck = await runCommand(opts.checkCommand, {
+      cwd: opts.cwd,
+      timeoutSec: 120,
+      signal: opts.signal,
+      env: { MH_HOME: opts.home },
+    });
     if (lastCheck.aborted) return result('aborted');
     if (lastCheck.exitCode === 0 && !lastCheck.timedOut) return result('passed');
     const normalized =

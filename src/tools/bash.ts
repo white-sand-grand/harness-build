@@ -20,6 +20,7 @@ export function createBashTool(description: string, shell?: Shell): Tool {
         signal: ctx.signal,
         onUpdate: ctx.onUpdate,
         shell,
+        env: ctx.home === undefined ? undefined : { MH_HOME: ctx.home },
       });
       const status = r.timedOut
         ? `[timed out after ${Number(args.timeout ?? 120)}s; process killed]`
@@ -28,12 +29,15 @@ export function createBashTool(description: string, shell?: Shell): Tool {
           : r.signal
             ? `[killed by ${r.signal}]`
             : `[exit code: ${r.exitCode}]`;
-      return textResult(`${r.output}\n${status}`, {
-        exitCode: r.exitCode,
-        timedOut: r.timedOut,
-        aborted: r.aborted,
-        truncated: r.truncated,
-      });
+      return {
+        ...textResult(`${r.output}\n${status}`, {
+          exitCode: r.exitCode,
+          timedOut: r.timedOut,
+          aborted: r.aborted,
+          truncated: r.truncated,
+        }),
+        isError: r.timedOut || r.aborted,
+      };
     },
   };
 }

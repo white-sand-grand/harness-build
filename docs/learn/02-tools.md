@@ -44,6 +44,8 @@
 
 命令返回非零退出码则直接写入输出和状态，**不会自动设置工具结果的 `isError`**。例如测试失败是模型需要阅读的业务结果。分析执行记录时，不能把“工具错误数为零”当作“所有命令都成功”。
 
+超时、中断和无法启动命令属于执行失败，会设置 `isError`。这样模型能区分“测试运行后发现失败”和“测试没有完成”，trace 的工具错误统计也能反映执行问题。
+
 ## 执行边界放在哪里
 
 [permissionHook](../../src/hooks/permission.ts) 在执行之前工作：普通读取放行；write/edit 解析真实路径后判断目录范围；bash 按危险模式检查。需要询问时可以批准一次、批准本会话同类操作或拒绝。没有人可以回答时，风险操作被拒绝。
@@ -61,6 +63,7 @@
 - Linux/macOS/WSL 用进程组，超时或中断时先发 SIGTERM，必要时再发 SIGKILL。
 - Windows 用 [Job Object 运行器](../../src/util/windows-job.ps1)管理 shell 和后代，结束时清理组内进程。
 - 每次调用使用显式 `cwd`，关闭标准输入；默认 120 秒超时，bash 工具允许最多 600 秒。
+- 应用层还传入本次运行的 `home`，命令以子进程环境变量 `MH_HOME` 接收它。命令里再次启动 `mh` 时，也会使用相同数据目录。
 - Windows 选择 Git Bash → PowerShell 7（`pwsh.exe`）→ Windows PowerShell 5.1（`powershell.exe`），工具描述告诉模型当前语法。
 
 每次调用都会启动新 shell，因此前一次的 `cd` 和临时变量不会延续。这牺牲了持续终端状态，但能减少不同调用之间隐藏的依赖。进程收集输出另有内存上限；超大日志应由命令重定向到文件。
@@ -74,6 +77,8 @@ node --import ./test/helpers/setup.ts --test test/unit/tools/tools.test.ts test/
 ```
 
 在测试中跟踪“失败后发生了什么”：多处匹配是否拒绝；越界链接是否触发询问；超时后不响应 SIGTERM 的后代是否终止。Windows 管道的实际执行案例只在原生 Windows 下运行，WSL 的通过结果不能代替它。
+
+`bash timeout is reported as a tool error` 和 `bash abort is reported as a tool error` 验证执行失败标记；并发任务的子进程数据目录隔离在[第八章](08-evaluation.md#一次尝试如何保持独立)继续检查。
 
 思考题：如果想并行执行所有工具，`edit → bash 测试` 这个顺序会发生什么？是否只标记 `readOnly` 就足以判断任意工具之间没有依赖？
 

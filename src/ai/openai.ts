@@ -1,4 +1,11 @@
-import type { ModelRequest, Provider, StreamEvent, AssistantMessage, ImageBlock } from './types.ts';
+import type {
+  ModelRequest,
+  Provider,
+  StreamEvent,
+  AssistantMessage,
+  ImageBlock,
+  PromptCacheDiagnostics,
+} from './types.ts';
 import { HTTPError, errorText } from './errors.ts';
 import { withRetry, type Sleep } from './retry.ts';
 import { parseSSE } from './sse.ts';
@@ -14,9 +21,15 @@ type ResponseItem = Record<string, unknown> & {
   summary?: { type?: string; text?: string }[];
 };
 type ResponseData = {
+  id?: string;
   status?: string;
   output?: ResponseItem[];
-  usage?: { input_tokens?: number; output_tokens?: number; input_tokens_details?: { cached_tokens?: number } };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    input_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+  };
+  prompt_cache_diagnostics?: PromptCacheDiagnostics;
   incomplete_details?: { reason?: string };
   error?: { code?: string; message?: string };
 };
@@ -32,8 +45,22 @@ type ResponseEvent = {
   code?: string;
   message?: string;
 };
-export function buildOpenAIBody(req: ModelRequest) {
+const isSol = (id: string) => /^gpt-6\.1-sol(?:-|$)/.test(id);
+const nativeCache = (req: ModelRequest) => req.model.compat?.promptCache ?? isSol(req.model.id);
+export function buildOpenAIBody(req: ModelRequest, useNativeCache = nativeCache(req)) {
   const input: Record<string, unknown>[] = [];
+  if (useNativeCache && req.system) {
+    const cut = Math.max(0, Math.min(req.system.length, req.systemCacheBoundary ?? req.system.length));
+    input.push({
+      role: 'developer',
+      content: [
+        ...(cut > 0
+          ? [{ type: 'input_text', text: req.system.slice(0, cut), prompt_cache_breakpoint: { mode: 'explicit' } }]
+          : []),
+        ...(cut < req.system.length ? [{ type: 'input_text', text: req.system.slice(cut) }] : []),
+      ],
+    });
+  }
   const image = (b: ImageBlock) => ({ type: 'input_image', image_url: `data:${b.mediaType};base64,${b.data}` });
   for (const m of req.messages) {
     if (m.role === 'user')
@@ -60,10 +87,33 @@ export function buildOpenAIBody(req: ModelRequest) {
           input.push({ type: 'function_call', call_id: b.id, name: b.name, arguments: JSON.stringify(b.args) });
       }
   }
+  const previous = req.messages.findLast(
+    (m) =>
+      m.role === 'assistant' &&
+      m.provider === 'openai' &&
+      m.model === req.model.id &&
+      ['end', 'toolUse'].includes(m.stopReason) &&
+      !!m.responsesId,
+  );
+  const reasoning = {
+    ...(req.thinking && req.thinking !== 'off' && req.model.supportsThinking
+      ? { effort: req.thinking, summary: 'auto' }
+      : {}),
+    ...(useNativeCache && isSol(req.model.id) ? { context: 'all_turns' } : {}),
+  };
   return {
     model: req.model.id,
-    instructions: req.system,
+    instructions: useNativeCache ? undefined : req.system,
     input,
+    ...(useNativeCache
+      ? {
+          prompt_cache_options: {
+            mode: 'implicit',
+            ttl: '30m',
+            ...(previous?.role === 'assistant' ? { comparison_response_id: previous.responsesId } : {}),
+          },
+        }
+      : {}),
     ...(req.tools.length
       ? {
           tools: req.tools.map((t) => ({
@@ -80,14 +130,13 @@ export function buildOpenAIBody(req: ModelRequest) {
     stream: true,
     store: false,
     ...(req.model.compat?.includeEncryptedReasoning === false ? {} : { include: ['reasoning.encrypted_content'] }),
-    ...(req.thinking && req.thinking !== 'off' && req.model.supportsThinking
-      ? { reasoning: { effort: req.thinking, summary: 'auto' } }
-      : {}),
+    ...(Object.keys(reasoning).length ? { reasoning } : {}),
   };
 }
 export class OpenAIProvider implements Provider {
   readonly id = 'openai';
   private retrySleep?: Sleep;
+  private incompatibleCache = new Set<string>();
   constructor(opts: { sleep?: Sleep } = {}) {
     this.retrySleep = opts.sleep;
   }
@@ -98,6 +147,7 @@ export class OpenAIProvider implements Provider {
       thoughts = new Map<number, string>(),
       completeCalls = new Set<number>(),
       announced = new Set<string>();
+    result.cache = { readReported: false, writeReported: false };
     let seen = false,
       terminal = false;
     const announce = (item: ResponseItem) => {
@@ -110,23 +160,40 @@ export class OpenAIProvider implements Provider {
       const env = req.model.apiKeyEnv ?? 'OPENAI_API_KEY',
         key = process.env[env];
       if (!key) throw new Error(`Missing API key. Set ${env} (for a local server, a placeholder value is sufficient).`);
+      const url = endpoint(
+        req.model.baseUrl ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+        '/v1/responses',
+      );
+      const cacheKey = url + '\n' + req.model.id;
       await withRetry(
         async () => {
-          const response = await fetch(
-            endpoint(req.model.baseUrl ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1', '/v1/responses'),
-            {
+          let response: Response;
+          while (true) {
+            const useCache = nativeCache(req) && !this.incompatibleCache.has(cacheKey);
+            if (nativeCache(req) && !useCache) result.cache!.compatibilityFallback = true;
+            response = await fetch(url, {
               method: 'POST',
               signal,
               headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-              body: JSON.stringify(buildOpenAIBody(req)),
-            },
-          );
-          if (!response.ok)
-            throw new HTTPError(
+              body: JSON.stringify(buildOpenAIBody(req, useCache)),
+            });
+            if (response.ok) break;
+            const error = new HTTPError(
               response.status,
               await response.text(),
               response.headers.get('retry-after') ?? undefined,
             );
+            if (
+              useCache &&
+              error.status === 400 &&
+              /unknown|unrecognized|unsupported|not supported|not permitted|unexpected/i.test(error.message) &&
+              /prompt_cache_options|prompt_cache_breakpoint|reasoning[.\s'\"]+context|all_turns/i.test(error.message)
+            ) {
+              this.incompatibleCache.add(cacheKey);
+              continue;
+            }
+            throw error;
+          }
           if (!response.body) throw new Error('API returned an empty response body.');
           for await (const event of parseSSE(response.body, signal)) {
             seen = true;
@@ -180,13 +247,19 @@ export class OpenAIProvider implements Provider {
                   completeCalls.add(i);
               }
               const u = native?.usage,
-                cached = u?.input_tokens_details?.cached_tokens ?? 0;
+                details = u?.input_tokens_details,
+                cached = details?.cached_tokens ?? 0,
+                written = details?.cache_write_tokens ?? 0;
               result.usage = {
-                input: Math.max(0, (u?.input_tokens ?? 0) - cached),
+                input: Math.max(0, (u?.input_tokens ?? 0) - cached - written),
                 output: u?.output_tokens ?? 0,
                 cacheRead: cached,
-                cacheWrite: 0,
+                cacheWrite: written,
               };
+              result.responsesId = native?.id;
+              result.cache!.readReported = typeof details?.cached_tokens === 'number';
+              result.cache!.writeReported = typeof details?.cache_write_tokens === 'number';
+              if (native?.prompt_cache_diagnostics) result.cache!.diagnostics = native.prompt_cache_diagnostics;
               if (data.type === 'response.incomplete') {
                 if (native?.incomplete_details?.reason === 'max_output_tokens') result.stopReason = 'maxTokens';
                 else throw new Error(`Responses incomplete: ${native?.incomplete_details?.reason ?? 'unknown reason'}`);

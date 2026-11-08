@@ -1,6 +1,6 @@
 import { mkdtemp, cp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, basename } from 'node:path';
+import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Provider } from '../ai/index.ts';
 import type { Config } from '../app/config.ts';

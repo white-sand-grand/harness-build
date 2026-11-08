@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFile, readFile, mkdir, access } from 'node:fs/promises';
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createReadTool, createWriteTool, createEditTool, createBashTool } from '../../../src/tools/index.ts';
 import { offloadHook } from '../../../src/context/offload.ts';
@@ -121,6 +121,22 @@ test('reports exit code without isError', async () =>
     const r = await createBashTool('').execute({ command: 'node -e "process.exit(7)"' }, ctx(d));
     assert.match(text(r), /exit code: 7/);
     assert.ok(!r.isError);
+  }));
+test('bash timeout is reported as a tool error', async () =>
+  withTmpDir(async (d) => {
+    const r = await createBashTool('').execute({ command: 'node -e "setTimeout(()=>{},30000)"', timeout: 1 }, ctx(d));
+    assert.match(text(r), /timed out/);
+    assert.equal(r.isError, true);
+  }));
+test('bash abort is reported as a tool error', async () =>
+  withTmpDir(async (d) => {
+    const controller = new AbortController();
+    const r = await createBashTool('').execute(
+      { command: 'node -e "console.log(\'ready\');setTimeout(()=>{},30000)"' },
+      { ...ctx(d, controller.signal), onUpdate: () => controller.abort() },
+    );
+    assert.match(text(r), /aborted/);
+    assert.equal(r.isError, true);
   }));
 test('timeout kills process group', async () =>
   withTmpDir(async (d) => {

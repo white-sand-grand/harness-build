@@ -1,11 +1,22 @@
+# Dependencies and generated build output
 node_modules/
 dist/
+*.tsbuildinfo
+
+# Local agent data and evaluation artifacts
+.mh/
 evals/runs/
 evals/variants/
-.mh/
+session.jsonl
+offload/
+dream-input/
+
+# Local credentials and logs; keep shareable environment examples
 .env
 .env.*
 !.env.example
+/auth.json
+/credentials.json
 *.log
 
 # Local development notes and reference material
@@ -17,4 +28,3 @@ evals/variants/
 /.codex/
 /.claude/
 /.agents/
-/scripts/migrate-responses-tests.ts

@@ -28,7 +28,7 @@ function readEntries(file: string) {
     }
   }
   if (entries[0]?.type !== 'header' || entries[0].v !== 1) throw new Error(`Invalid session header: ${file}`);
-  return { entries, repaired };
+  return { entries, repaired, needsNewline: !raw.endsWith('\n') };
 }
 class Store implements SessionStore {
   readonly id: string;
@@ -39,11 +39,12 @@ class Store implements SessionStore {
   constructor(dir: string) {
     this.dir = dir;
     this.file = join(dir, 'session.jsonl');
-    const { entries, repaired } = readEntries(this.file);
+    const { entries, repaired, needsNewline } = readEntries(this.file);
     this.records = entries;
     this.id = entries[0]!.id;
     this.next = Math.max(0, ...entries.map((e) => (/^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0))) + 1;
     if (repaired) writeFileSync(this.file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+    else if (needsNewline) appendFileSync(this.file, '\n');
   }
   append(entry: DistributiveOmit<SessionEntry, 'id' | 'ts'>): string {
     const id = `e${this.next++}`;

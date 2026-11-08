@@ -40,6 +40,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       const result = await tool.execute(call.args, {
         cwd: opts.toolContext?.cwd ?? '',
         sessionDir: opts.toolContext?.sessionDir ?? '',
+        home: opts.toolContext?.home,
         signal: opts.signal,
         onUpdate: (text) => emit({ type: 'toolUpdate', callId: call.id, text }),
       });
@@ -56,6 +57,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       {
         model: cfg.model,
         system: cfg.system,
+        systemCacheBoundary: cfg.systemCacheBoundary,
         messages,
         tools: cfg.tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
         thinking: cfg.thinking,

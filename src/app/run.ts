@@ -87,6 +87,8 @@ export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
             usage: e.message.usage,
             latencyMs: Date.now() - started,
             stopReason: e.message.stopReason,
+            ...(e.message.cache ? { cache: e.message.cache } : {}),
+            ...(e.message.responsesId ? { responsesId: e.message.responsesId } : {}),
           },
         });
       }
@@ -155,7 +157,7 @@ export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
       signal: opts.signal ?? new AbortController().signal,
       onEvent,
       getSteering: opts.getSteering,
-      toolContext: { cwd: opts.cwd, sessionDir: session.dir },
+      toolContext: { cwd: opts.cwd, sessionDir: session.dir, home: opts.home },
     });
   } catch (error) {
     onEvent({

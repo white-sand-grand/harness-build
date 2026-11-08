@@ -33,9 +33,10 @@ export async function runREPL(opts: Omit<StartRunOptions, 'prompt'>, initial = '
       .then((r) => {
         session = r.session;
         const input = r.usage.input + r.usage.cacheRead + r.usage.cacheWrite,
+          cache = summarizeTrace(r.session.entries().slice(entryStart)).cache,
           price = cost(r.usage, resolveModel(opts.config.model, opts.config.models, opts.config.provider));
         console.log(
-          `tokens ${input} in / ${r.usage.output} out · cache hit ${input ? ((100 * r.usage.cacheRead) / input).toFixed(1) : '0'}% · cost ${price === undefined ? 'n/a' : '$' + price.toFixed(6)} · ${r.reason}`,
+          `tokens ${input} in / ${r.usage.output} out · cache read ${cache.readReported ? r.usage.cacheRead : 'n/a'} / write ${cache.writeReported ? r.usage.cacheWrite : 'n/a'} · cache hit ${cache.hitRate === null ? 'n/a' : (cache.hitRate * 100).toFixed(1) + '%'} · cost ${price === undefined ? 'n/a' : '$' + price.toFixed(6)} · ${r.reason}`,
         );
         if (
           r.session
@@ -111,6 +112,7 @@ export async function runREPL(opts: Omit<StartRunOptions, 'prompt'>, initial = '
           JSON.stringify({
             model: opts.config.model,
             usage: stats.usage,
+            cache: stats.cache,
             modelCalls: stats.modelCalls,
             cost: stats.cost ?? 'n/a',
           }),

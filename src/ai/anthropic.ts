@@ -60,18 +60,17 @@ export function buildAnthropicBody(req: ModelRequest) {
     ...(budget && req.model.supportsThinking ? { thinking: { type: 'enabled', budget_tokens: budget } } : {}),
   };
 }
+type WireUsage = {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_read_input_tokens?: number;
+  cache_creation_input_tokens?: number;
+};
 type AnthropicEvent = {
   type?: string;
   index?: number;
-  message?: {
-    usage?: {
-      input_tokens?: number;
-      output_tokens?: number;
-      cache_read_input_tokens?: number;
-      cache_creation_input_tokens?: number;
-    };
-  };
-  usage?: { output_tokens?: number };
+  message?: { usage?: WireUsage };
+  usage?: WireUsage;
   content_block?: {
     type: string;
     text?: string;
@@ -101,6 +100,19 @@ export class AnthropicProvider implements Provider {
     const result = emptyAssistant(req, this.id);
     const blocks = new Map<number, AssistantMessage['content'][number]>();
     const calls = new Map<number, { call: ToolCallBlock; raw: string }>();
+    function updateUsage(usage?: WireUsage) {
+      if (!usage) return;
+      result.usage = {
+        input: usage.input_tokens ?? result.usage.input,
+        output: usage.output_tokens ?? result.usage.output,
+        cacheRead: usage.cache_read_input_tokens ?? result.usage.cacheRead,
+        cacheWrite: usage.cache_creation_input_tokens ?? result.usage.cacheWrite,
+      };
+      result.cache = {
+        readReported: !!result.cache?.readReported || typeof usage.cache_read_input_tokens === 'number',
+        writeReported: !!result.cache?.writeReported || typeof usage.cache_creation_input_tokens === 'number',
+      };
+    }
     let seen = false;
     let complete = false;
     try {
@@ -139,13 +151,7 @@ export class AnthropicProvider implements Provider {
             const data = JSON.parse(event.data) as AnthropicEvent;
             const i = data.index ?? 0;
             if (data.type === 'message_start') {
-              const u = data.message?.usage;
-              result.usage = {
-                input: u?.input_tokens ?? 0,
-                output: u?.output_tokens ?? 0,
-                cacheRead: u?.cache_read_input_tokens ?? 0,
-                cacheWrite: u?.cache_creation_input_tokens ?? 0,
-              };
+              updateUsage(data.message?.usage);
             } else if (data.type === 'content_block_start') {
               const b = data.content_block!;
               if (b.type === 'text') blocks.set(i, { type: 'text', text: b.text ?? '' });
@@ -179,7 +185,7 @@ export class AnthropicProvider implements Provider {
               if (c.raw) c.call.args = parseArgs(c.raw);
               blocks.set(i, c.call);
             } else if (data.type === 'message_delta') {
-              result.usage.output = data.usage?.output_tokens ?? result.usage.output;
+              updateUsage(data.usage);
               const stop = data.delta?.stop_reason;
               result.stopReason = stop === 'tool_use' ? 'toolUse' : stop === 'max_tokens' ? 'maxTokens' : 'end';
             } else if (data.type === 'message_stop') complete = true;

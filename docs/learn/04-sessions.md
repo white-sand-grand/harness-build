@@ -8,14 +8,14 @@
 
 mini-harness 使用 JSONL：每行一个 JSON 对象，每条新记录追加到文件末尾。文件位于 `MH_HOME/projects/<slug>/sessions/<id>/session.jsonl`，默认数据目录为 `~/.mh`。
 
-| 记录类型      | 内容                             | 恢复时的用途           |
-| ------------- | -------------------------------- | ---------------------- |
-| `header`      | 版本、会话 ID、目录和创建时间    | 确认这是什么会话       |
-| `message`     | 用户、助手、工具结果             | 形成模型能看到的对话   |
-| `compaction`  | 摘要、保留消息的起点             | 用摘要接上较新的消息   |
-| `clearing`    | 被清理的工具结果 ID              | 恢复相同的占位内容     |
-| `modelChange` | 切换后的模型与 provider          | 恢复选择               |
-| `trace`       | 调用用量、耗时、工具与 hook 状态 | 排查问题、统计评测指标 |
+| 记录类型      | 内容                                                 | 恢复时的用途           |
+| ------------- | ---------------------------------------------------- | ---------------------- |
+| `header`      | 版本、会话 ID、目录和创建时间                        | 确认这是什么会话       |
+| `message`     | 用户、助手、工具结果                                 | 形成模型能看到的对话   |
+| `compaction`  | 摘要、保留消息的起点                                 | 用摘要接上较新的消息   |
+| `clearing`    | 被清理的工具结果 ID                                  | 恢复相同的占位内容     |
+| `modelChange` | 切换后的模型与 provider                              | 恢复选择               |
+| `trace`       | 最终用量、缓存报告状态与诊断、耗时、工具与 hook 状态 | 排查问题、统计评测指标 |
 
 为什么把消息与 trace 分开？它们虽然写在同一文件中，用途不同。模型需要任务信息，开发者还需要知道执行用了多久、哪一步失败；恢复上下文时只取应进入对话的内容。
 
@@ -50,8 +50,9 @@ e6  助手：开始检查边界情况
 
 这保留了协议所需的调用配对，也承认磁盘状态可能已经改变。恢复会话不会重放历史工具操作，更不能恢复已结束的进程。
 
-文件损坏也分两种处理：
+文件结尾和损坏分开处理：
 
+- 最后一条 JSON 完整，但末尾缺少换行：打开续接时只补一个换行，保留原记录字节；否则下次追加会把两条 JSON 粘在一起。列出会话时保持只读。
 - 最后一行没有写完整：警告，保留并重新写回前面的有效记录。
 - 中间记录损坏：报告文件和行号，不静默跳过未知内容。
 
@@ -64,6 +65,8 @@ node --import ./test/helpers/setup.ts --test test/unit/session/store.test.ts tes
 ```
 
 重点看 `ignores truncated last line`、`errors on corrupt middle line with line number` 和 `resume repairs tool calls interrupted by a process crash`。后者先构造一个只有调用、没有结果的会话，再检查恢复请求是否含有对应的错误结果。
+
+`resume appends safely after a valid final record without a newline` 覆盖另一种容易漏掉的情况：记录内容有效，缺的只是下一条记录之前的分隔符。
 
 源码阅读顺序是 [session/types.ts](../../src/session/types.ts) → [store.ts](../../src/session/store.ts) → [rebuild.ts](../../src/session/rebuild.ts) → [app/run.ts](../../src/app/run.ts)。CLI 的 `-c` 和 `-r` 入口在 [main.ts](../../src/cli/main.ts)，它还会恢复上次 provider/model，并优先采用显式参数。
 

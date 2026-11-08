@@ -17,6 +17,11 @@ export function createRenderer(opts: { hideThinking?: boolean; write?: (s: strin
     }
     if (e.type === 'message' && e.message.role === 'assistant') {
       write('\n');
+      const cache = e.message.cache;
+      if (cache?.compatibilityFallback)
+        write('[cache] Gateway rejected native cache controls; using compatible Responses.\n');
+      if (cache?.diagnostics?.type === 'cache_miss')
+        write(`[cache] Miss: ${cache.diagnostics.reason ?? 'unclassified'}.\n`);
       hidden = false;
     }
     if (e.type === 'toolStart')

@@ -1,4 +1,4 @@
-import type { Message, ToolResultMessage } from '../ai/index.ts';
+import type { Message } from '../ai/index.ts';
 import type { SessionEntry } from './types.ts';
 export const clearedText = (name: string) =>
   `[Output of ${name} cleared to save context. Re-run the tool call if you need it again.]`;

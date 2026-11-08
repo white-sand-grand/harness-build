@@ -1,4 +1,4 @@
-import type { Provider, ModelInfo, Usage } from '../ai/index.ts';
+import type { Provider, ModelInfo, Usage, CacheInfo } from '../ai/index.ts';
 import { renderTemplate } from '../util/template.ts';
 export type JudgeVerdict = { score: number; pass: boolean; reason: string } | { error: string };
 export function parseJudge(text: string): JudgeVerdict {
@@ -49,7 +49,7 @@ export async function runJudge(opts: {
   diff: string;
   finalText: string;
   signal: AbortSignal;
-}): Promise<{ verdict: JudgeVerdict; usage: Usage }> {
+}): Promise<{ verdict: JudgeVerdict; usage: Usage; cache?: CacheInfo }> {
   const system = renderTemplate(opts.template, {
     prompt: opts.prompt,
     rubric: opts.rubric,
@@ -79,5 +79,6 @@ export async function runJudge(opts: {
               .join(''),
           ),
     usage: out.usage,
+    ...(out.cache ? { cache: out.cache } : {}),
   };
 }

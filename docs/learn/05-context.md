@@ -12,6 +12,23 @@
 
 这个选择也有代价：会话中修改了说明文件或记忆索引，已缓存的系统提示不会立即更新。模型可以主动读取新文件，新会话实例会重新加载。
 
+## 冻结背景怎样帮助服务端缓存
+
+上面的会话对象缓存保存的是组装后的字符串。模型服务端的提示缓存则复用相同前缀的计算结果；`store: false` 也不表示关闭这种缓存。保持字符串稳定是前提，实际是否命中还取决于模型、端点、缓存寿命和前缀长度。
+
+对 `gpt-6.1-sol`，[systemCacheBoundary](../../src/context/system-prompt.ts) 找到项目指令之后、记忆和环境之前的字符边界。应用层把边界经内核传给适配器，底层模型接口只按这个偏移划分文本，不需要理解应用的 Markdown 格式。
+
+```text
+稳定工具定义
+  → developer：基本提示 + 项目指令 [缓存断点]
+  → developer 的后续内容：记忆索引 + 环境
+  → 历史消息与结果，末尾追加新消息
+```
+
+显式断点保护稳定背景；implicit 模式继续缓存增长的对话。已有加密推理和原生输出也原样重放，Sol 使用 `all_turns` 保持兼容推理上下文。断点前的可缓存前缀至少需要 1024 个可见输入 token；程序不会为了达到阈值填充无用文字。
+
+清理旧输出和生成摘要会改写历史前缀，可能降低缓存复用。这是控制上下文长度的代价，需要一起观察窗口压力、缓存命中和任务结果。原厂依据、兼容网关配置及复跑命令见[提示缓存排查指南](../prompt-caching.md)。
+
 ## 长输出先放到文件里
 
 例如测试命令输出了 5000 行，只需要其中几处错误就能继续工作。[offloadHook](../../src/context/offload.ts) 在文本超过 30000 字符或 2000 行时，把工具返回文本写入会话 `offload/`，回传头尾、删减数量和完整路径。
@@ -55,7 +72,7 @@
 在项目根目录的 PowerShell 7 或 WSL Ubuntu bash 中执行：
 
 ```sh
-node --import ./test/helpers/setup.ts --test test/unit/context/context.test.ts
+node --import ./test/helpers/setup.ts --test test/unit/context/context.test.ts test/unit/ai/cache.test.ts
 ```
 
 重点看 `cut point never separates toolCall from toolResult`、`summary failure leaves context unchanged` 和 `rebuild after compaction matches live context`。测试用小窗口和固定摘要触发边界，检查算法行为；它不证明生成摘要保留了所有语义。

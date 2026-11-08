@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFile, writeFile, utimes } from 'node:fs/promises';
+import { appendFile, writeFile, readFile, utimes } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createSession, openSession, listSessions } from '../../../src/session/index.ts';
 import { withTmpDir } from '../../helpers/tmp.ts';
@@ -20,6 +20,26 @@ test('ignores truncated last line', async () =>
     assert.equal(restored.context().messages.length, 1);
     restored.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'next' }] } });
     assert.equal(openSession(d, d, s.id).context().messages.length, 2);
+  }));
+test('resume appends safely after a valid final record without a newline', async () =>
+  withTmpDir(async (d) => {
+    const session = createSession(d, d);
+    session.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'first' }] } });
+    const file = join(session.dir, 'session.jsonl');
+    const original = (await readFile(file, 'utf8')).trimEnd();
+    await writeFile(file, original);
+    assert.equal(listSessions(d, d).length, 1);
+    assert.equal(await readFile(file, 'utf8'), original, 'listing must leave the transcript untouched');
+    const resumed = openSession(d, d, session.id);
+    assert.equal(await readFile(file, 'utf8'), original + '\n', 'preserve the original record bytes');
+    assert.equal(
+      resumed.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'second' }] } }),
+      'e2',
+    );
+    assert.deepEqual(openSession(d, d, session.id).context().messages, [
+      { role: 'user', content: [{ type: 'text', text: 'first' }] },
+      { role: 'user', content: [{ type: 'text', text: 'second' }] },
+    ]);
   }));
 test('errors on corrupt middle line with line number', async () =>
   withTmpDir(async (d) => {

@@ -1,7 +1,7 @@
 import { mkdir, cp } from 'node:fs/promises';
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
-import type { Provider, Usage } from '../ai/index.ts';
+import type { Provider } from '../ai/index.ts';
 import { zeroUsage, addUsage, cost, resolveModel, AnthropicProvider, OpenAIProvider } from '../ai/index.ts';
 import { createSession } from '../session/index.ts';
 import { startRun } from '../app/run.ts';
@@ -58,7 +58,8 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
   async function attempt(task: EvalTask, n: number): Promise<AttemptResult> {
     const started = Date.now(),
       workspace = join(dir, 'workspaces', task.id, String(n)),
-      home = join(dir, 'homes', task.id, String(n));
+      home = join(dir, 'homes', task.id, String(n)),
+      env = { MH_HOME: home };
     const result: AttemptResult = {
       taskId: task.id,
       attempt: n,
@@ -76,6 +77,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
     try {
       opts.signal?.throwIfAborted();
       await mkdir(workspace, { recursive: true });
+      await mkdir(home, { recursive: true });
       const files = join(opts.tasksDir, task.id, 'files');
       if (existsSync(files)) await cp(files, workspace, { recursive: true });
       for (const args of [
@@ -94,12 +96,18 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
           'init',
         ],
       ]) {
-        const init = spawnSync('git', args, { cwd: workspace, encoding: 'utf8', windowsHide: true, timeout: 30000 });
+        const init = spawnSync('git', args, {
+          cwd: workspace,
+          encoding: 'utf8',
+          windowsHide: true,
+          timeout: 30000,
+          env: { ...process.env, ...env },
+        });
         if (init.status !== 0)
           throw new Error('Evaluation git setup failed: ' + (init.error?.message ?? init.stderr).slice(-1000));
       }
       if (task.setup) {
-        const setup = await runCommand(task.setup, { cwd: workspace, timeoutSec: 120, signal: opts.signal });
+        const setup = await runCommand(task.setup, { cwd: workspace, timeoutSec: 120, signal: opts.signal, env });
         if (setup.exitCode !== 0 || setup.timedOut || setup.aborted) {
           result.status = 'setupError';
           result.checkOutputTail = setup.output.slice(-3000);
@@ -131,6 +139,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
         cwd: workspace,
         timeoutSec: task.check.timeoutSec ?? 120,
         signal: opts.signal,
+        env,
       });
       result.checkExitCode = check.exitCode ?? undefined;
       result.checkOutputTail = (
@@ -140,7 +149,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       ).slice(-3000);
       result.status = check.exitCode === 0 && !check.timedOut && !check.aborted ? 'pass' : 'fail';
       if (task.judge) {
-        const diff = await runCommand('git diff HEAD --', { cwd: workspace, timeoutSec: 30, signal: opts.signal });
+        const diff = await runCommand('git diff HEAD --', { cwd: workspace, timeoutSec: 30, signal: opts.signal, env });
         const judged = await runJudge({
           provider,
           model,
@@ -154,7 +163,11 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
         result.judge = judged.verdict;
         result.usage = addUsage(result.usage, judged.usage);
         if ('error' in judged.verdict || !judged.verdict.pass) result.status = 'fail';
-        session.append({ type: 'trace', name: 'turn', data: { kind: 'judge', usage: judged.usage } });
+        session.append({
+          type: 'trace',
+          name: 'turn',
+          data: { kind: 'judge', usage: judged.usage, ...(judged.cache ? { cache: judged.cache } : {}) },
+        });
       }
       const amount = cost(result.usage, model);
       if (amount !== undefined) result.cost = amount;

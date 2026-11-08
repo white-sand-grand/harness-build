@@ -139,6 +139,23 @@ test('stops on success', async () =>
     assert.equal(r.reason, 'passed');
     assert.equal(r.iterations, 1);
   }));
+test('Ralph checks use the run home without changing the parent environment', async () =>
+  withTmpDir(async (d) => {
+    const home = join(d, 'home');
+    const before = process.env.MH_HOME;
+    await writeFile(join(d, 'check.cjs'), "require('node:fs').writeFileSync('home.txt', process.env.MH_HOME);\n");
+    const r = await runRalph({
+      cwd: d,
+      home,
+      config: defaultConfig(),
+      prompt: 'task',
+      provider: scripted({ text: 'done' }),
+      checkCommand: 'node check.cjs',
+    });
+    assert.equal(r.reason, 'passed');
+    assert.equal(await readFile(join(d, 'home.txt'), 'utf8'), home);
+    assert.equal(process.env.MH_HOME, before);
+  }));
 test('stops at max-iter', async () =>
   withTmpDir(async (d) => {
     await writeFile(join(d, 'n'), '0');

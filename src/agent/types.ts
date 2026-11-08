@@ -1,7 +1,6 @@
 import type {
   Message,
   AssistantMessage,
-  ToolResultMessage,
   ToolCallBlock,
   TextBlock,
   ImageBlock,
@@ -13,6 +12,7 @@ import type {
 
 export type ToolContext = {
   cwd: string; // 绝对路径；工具内一切相对路径相对它解析
+  home?: string; // 显式运行数据目录，作为子进程 MH_HOME 传递
   signal: AbortSignal;
   sessionDir: string; // offload 等写入位置
   onUpdate?: (partialText: string) => void; // bash 流式输出给 UI（不进上下文）
@@ -64,6 +64,7 @@ export type AgentConfig = {
   provider: Provider;
   model: ModelInfo;
   system: string;
+  systemCacheBoundary?: number;
   tools: Tool[];
   hooks: Hooks; // app 层用 hooks/compose.ts 合成一个
   thinking?: ThinkingLevel;
@@ -72,7 +73,7 @@ export type AgentConfig = {
 
 export type RunOptions = {
   /** Explicit tool IO locations; the kernel never reads process.cwd or the filesystem. */
-  toolContext?: { cwd: string; sessionDir: string };
+  toolContext?: { cwd: string; sessionDir: string; home?: string };
   signal: AbortSignal;
   onEvent: (e: AgentEvent) => void;
   /** 每批工具执行完、下次调模型前调用；返回用户在运行中排队的输入。 */
