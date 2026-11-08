@@ -26,7 +26,7 @@ node dist/cli/main.js --help
 
 开发时用 `pnpm dev`，构建后用 `node dist/cli/main.js`。下文的 `mh` 表示该构建入口；也可以自行执行 `pnpm link --global` 安装命令行链接。
 
-Windows shell 自动选择 Git Bash → pwsh → powershell，模型会收到当前使用的 shell 及语法说明。每次命令调用都启动独立进程，不保留上一次调用中的 `cd` 或临时变量；Windows 调用结束后也不会保留后台进程。超时和中断会清理相关子进程，具体机制见下文。
+Windows 下按 **Git Bash → PowerShell 7 → Windows PowerShell 5.1** 的顺序选择可用的命令环境，找到可用的一项就使用。模型会收到所选环境及语法说明。每次命令调用都启动独立进程，不保留上一次调用中的 `cd` 或临时变量；Windows 调用结束后也不会保留后台进程。超时和中断会清理相关子进程，具体机制见下文。
 
 ## 模型与环境变量
 
@@ -278,7 +278,7 @@ Analyze 只输入 dev 失败结果、对应会话记录和提示词副本，不�
 
 ### Windows 与中断处理
 
-Windows 优先寻找 Git for Windows 自带的 bash，不把 WSL 的 bash 启动器当成 Git Bash；找不到时依次使用 pwsh、powershell。工具名仍为 `bash`，实际描述会改为当前 shell 的语法。
+Windows 优先寻找 Git for Windows 自带的 bash，不把 WSL 的 bash 启动器当成 Git Bash；找不到时先查找 PowerShell 7（程序名为 `pwsh.exe`），再回退到系统自带的 Windows PowerShell 5.1（程序名为 `powershell.exe`）。两者属于不同版本的 PowerShell，可以同时安装。工具名仍为 `bash`，实际描述会改为当前 shell 的语法。
 
 Windows 用系统自带 PowerShell/.NET 创建 Job Object，把 shell 及后代纳入同一组，关闭 job 时结束组内进程；超时或 Ctrl+C 会通过 `taskkill` 终止运行器。运行器使用隐藏窗口，不修改 PowerShell 执行策略，所需脚本随构建复制。Linux/macOS/WSL 使用进程组，先发送 SIGTERM，再在必要时发送 SIGKILL。
 
