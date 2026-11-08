@@ -1,0 +1,10 @@
+{
+  "id": "explain-no-edit",
+  "split": "heldout",
+  "prompt": "Explain what normalizeSlug in normalize.cjs does, including non-string inputs, trimming, lowercasing and internal whitespace. Do not change or create any workspace files.",
+  "check": { "command": "node check.cjs" },
+  "judge": {
+    "rubric": "The explanation must accurately describe String(value) coercion, trimming leading/trailing whitespace, lowercasing, and replacing every run of whitespace with a single hyphen. It must not claim punctuation is removed or throw for all non-strings. A short example is useful. No source edits are requested."
+  },
+  "tags": ["read-only", "judge"]
+}

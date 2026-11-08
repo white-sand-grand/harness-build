@@ -1,0 +1,1 @@
+Read a file from the filesystem. Returns text with line numbers (format: line number, tab, content) or, for png/jpg/gif/webp, the image itself. Text files return at most 2000 lines per call; use offset (1-based line number) and limit to page through longer files. The line-number prefix is not part of the file: never include it in edit's oldText.

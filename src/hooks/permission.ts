@@ -1,0 +1,96 @@
+import { dirname } from 'node:path';
+import type { Hooks } from '../agent/index.ts';
+import { realPath, isWithin, resolvePath } from '../util/paths.ts';
+export type Asker = (q: { title: string; detail: string }) => Promise<'once' | 'session' | 'deny'>;
+export function riskyCategory(command: string, extra: RegExp[] = []): string | undefined {
+  const rm = command.match(/\brm\s+([^;|\n]*)/i)?.[1] ?? '';
+  if (
+    (/(?:^|\s)-(?:[a-z]*r[a-z]*)(?:\s|$|")|--recursive\b/i.test(rm) &&
+      /(?:^|\s)-(?:[a-z]*f[a-z]*)(?:\s|$|")|--force\b/i.test(rm)) ||
+    /\b(?:Remove-Item|del|ri|rm)\b(?=[^;\n]*-Recurse\b)(?=[^;\n]*-Force\b)/i.test(command)
+  )
+    return 'recursive delete';
+  if (
+    /\bgit\b[^;\n]*\b(?:push\b[^;\n]*(?:--force(?:-with-lease)?\b|\s-f\b)|reset\s+--hard\b|clean\s+-[a-z]*f|checkout\s+--\s+\.(?:\s|$)|branch\s+-D\b)/.test(
+      command,
+    )
+  )
+    return 'git history';
+  if (
+    /\b(?:curl|wget)\b[^;\n]*\|\s*(?:ba|da|z)?sh\b/i.test(command) ||
+    (/\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\b/i.test(command) &&
+      /\b(?:iex|Invoke-Expression)\b/i.test(command))
+  )
+    return 'remote script';
+  if (
+    /\b(?:mkfs(?:\.\w+)?|shutdown|reboot|Format-Volume|Clear-Disk|Initialize-Disk)\b|\bdd\b[^;\n]*\bof=\/dev\/|>\s*\/dev\/sd/i.test(
+      command,
+    )
+  )
+    return 'disk/system';
+  if (/\bsudo\s|\bchmod\s+-[a-z]*R\b[^;\n]*777|\bchown\s+-[a-z]*R\b/i.test(command)) return 'privilege';
+  if (/\b(?:npm|pnpm)\s+publish\b|\bdocker\s+push\b/i.test(command)) return 'publish';
+  if (
+    extra.some((re) => {
+      re.lastIndex = 0;
+      return re.test(command);
+    })
+  )
+    return 'custom';
+  return undefined;
+}
+export function permissionHook(opts: {
+  mode: 'ask' | 'yolo';
+  root: string;
+  cwd?: string;
+  allowedDirs: string[];
+  ask?: Asker;
+  extraPatterns: RegExp[];
+  strictWriteRoots?: string[];
+  approvals?: Set<string>;
+}): Hooks {
+  const approved = opts.approvals ?? new Set<string>();
+  return {
+    async beforeTool(call, tool) {
+      if (tool.readOnly) return { action: 'allow' };
+      let category: string | undefined,
+        detail = '';
+      if (call.name === 'write' || call.name === 'edit') {
+        const target = realPath(resolvePath(opts.cwd ?? opts.root, String(call.args.path)));
+        if (
+          opts.strictWriteRoots &&
+          (!opts.strictWriteRoots.some((root) => isWithin(realPath(root), target)) ||
+            target.split(/[\\/]/).includes('.git'))
+        )
+          return {
+            action: 'deny',
+            reason: 'Blocked: writes are restricted to this operation’s output directory (excluding .git).',
+          };
+        if (![opts.root, ...opts.allowedDirs].some((root) => isWithin(realPath(root), target))) {
+          category = 'outside:' + dirname(target);
+          detail = target;
+        }
+      } else if (call.name === 'bash') {
+        category = riskyCategory(String(call.args.command), opts.extraPatterns);
+        detail = String(call.args.command);
+      }
+      if (opts.mode === 'yolo' || !category) return { action: 'allow' };
+      const key = call.name + ':' + category;
+      if (approved.has(key)) return { action: 'allow' };
+      if (!opts.ask)
+        return {
+          action: 'deny',
+          reason: `Blocked: this action matches a risky pattern (${category}) and no user is available to approve it. Choose a safer alternative or explain what you need.`,
+        };
+      const answer = await opts.ask({ title: `Approve ${call.name}: ${category}?`, detail });
+      if (answer === 'deny')
+        return {
+          action: 'deny',
+          reason:
+            'The user denied this action. Do not retry it; ask the user how to proceed or choose a different approach.',
+        };
+      if (answer === 'session') approved.add(key);
+      return { action: 'allow' };
+    },
+  };
+}

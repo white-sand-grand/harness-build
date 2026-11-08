@@ -1,0 +1,1 @@
+const fs=require('node:fs');const assert=require('node:assert/strict');const raw=fs.readFileSync('settings.cjs','utf8');assert.equal(require('./settings.cjs').timeout,20);assert.equal(require('./settings.cjs').retries,2);assert.ok(raw.includes('\r\n'),'CRLF missing');assert.ok(!raw.replace(/\r\n/g,'').includes('\n'),'bare LF introduced');

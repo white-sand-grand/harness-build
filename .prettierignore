@@ -1,0 +1,8 @@
+plan/
+references/
+evals/runs/
+evals/variants/
+test/fixtures/
+evals/tasks/**/files/
+dist/
+pnpm-lock.yaml

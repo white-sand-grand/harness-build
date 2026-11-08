@@ -1,0 +1,20 @@
+node_modules/
+dist/
+evals/runs/
+evals/variants/
+.mh/
+.env
+.env.*
+!.env.example
+*.log
+
+# Local development notes and reference material
+/plan/
+/references/
+/PROGRESS.md
+/AGENTS.md
+/CLAUDE.md
+/.codex/
+/.claude/
+/.agents/
+/scripts/migrate-responses-tests.ts

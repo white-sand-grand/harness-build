@@ -1,0 +1,1 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');test('add',()=>assert.equal(require('./add.cjs').add(2,3),5));test('correct test command',()=>assert.equal(require('./package.json').scripts.test,'node --test'));

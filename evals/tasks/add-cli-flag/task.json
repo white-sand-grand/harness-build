@@ -1,0 +1,7 @@
+{
+  "id": "add-cli-flag",
+  "split": "dev",
+  "prompt": "Add an optional --upper flag to cli.cjs. It may appear anywhere in the arguments; remove the flag from the text, join other arguments with spaces, and uppercase the output when enabled. Preserve ordinary output without the flag. Run tests.",
+  "check": { "command": "node --test" },
+  "tags": ["cli"]
+}

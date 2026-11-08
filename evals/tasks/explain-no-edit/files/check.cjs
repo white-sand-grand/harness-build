@@ -1,0 +1,1 @@
+const {spawnSync}=require('node:child_process');const assert=require('node:assert/strict');const r=spawnSync('git',['status','--porcelain'],{encoding:'utf8'});assert.equal(r.status,0);assert.equal(r.stdout.trim(),'','Workspace must remain unchanged, including untracked files');

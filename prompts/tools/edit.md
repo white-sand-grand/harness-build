@@ -1,0 +1,1 @@
+Replace an exact piece of text in a file. oldText must match the current file content exactly, including whitespace and indentation, and must be unique in the file unless replaceAll is true. Include enough surrounding lines to make the match unique. Read the file first if you are not sure of its current content. Line endings (LF/CRLF) are handled for you.

@@ -1,0 +1,32 @@
+{
+  "name": "mini-harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "mh": "dist/cli/main.js"
+  },
+  "files": [
+    "dist",
+    "prompts"
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint:layers": "node scripts/check-layers.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --import ./test/helpers/setup.ts --test \"test/unit/**/*.test.ts\" \"test/integration/**/*.test.ts\"",
+    "test:live": "node --test \"test/live/**/*.test.ts\"",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.ts",
+    "check": "pnpm typecheck && pnpm lint:layers && pnpm format:check && pnpm test && pnpm build",
+    "dev": "node src/cli/main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
+  }
+}

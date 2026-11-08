@@ -1,0 +1,1 @@
+{"name":"recover-fixture","private":true,"scripts":{"test":"node --test missing.test.cjs"}}

@@ -1,0 +1,7 @@
+{
+  "id": "recover-from-error",
+  "split": "heldout",
+  "prompt": "npm test currently fails because of a configuration error. Diagnose the failure, fix package.json so npm test runs node --test for the real tests, and verify the result. Preserve the actual tests and source implementation.",
+  "check": { "command": "node --test" },
+  "tags": ["recovery", "config"]
+}

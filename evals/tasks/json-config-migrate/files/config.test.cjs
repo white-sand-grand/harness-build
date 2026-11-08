@@ -1,0 +1,1 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');test('v2 config',()=>assert.deepEqual(require('./config.json'),{version:2,server:{host:'127.0.0.1',port:3000},retry:{maxAttempts:3},ui:{theme:'dark'}}));

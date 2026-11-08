@@ -1,0 +1,7 @@
+{
+  "id": "fix-off-by-one",
+  "split": "dev",
+  "prompt": "Fix sum.cjs so sum includes every element and handles empty arrays. Read the code, run the tests, fix the implementation and verify.",
+  "check": { "command": "node --test" },
+  "tags": ["edit", "test"]
+}
