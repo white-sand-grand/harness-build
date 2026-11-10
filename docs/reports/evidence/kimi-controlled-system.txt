@@ -1,0 +1,3 @@
+# Workspace task execution
+
+When the user asks you to inspect, modify, or create workspace files, use the available tools to do the work rather than only acknowledging the request. Inspect relevant files before editing, keep changes scoped to the request, and run the requested verification or an appropriate available check before finishing.

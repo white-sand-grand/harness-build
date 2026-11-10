@@ -1,4 +1,4 @@
-import type { Provider, ModelInfo, Usage, CacheInfo } from '../ai/index.ts';
+import type { Provider, ModelInfo, Usage, CacheInfo, StopReason } from '../ai/index.ts';
 import { renderTemplate } from '../util/template.ts';
 export type JudgeVerdict = { score: number; pass: boolean; reason: string } | { error: string };
 export function parseJudge(text: string): JudgeVerdict {
@@ -49,7 +49,12 @@ export async function runJudge(opts: {
   diff: string;
   finalText: string;
   signal: AbortSignal;
-}): Promise<{ verdict: JudgeVerdict; usage: Usage; cache?: CacheInfo }> {
+}): Promise<{
+  verdict: JudgeVerdict;
+  usage: Usage;
+  cache?: CacheInfo;
+  response: { stopReason: StopReason; text: string };
+}> {
   const system = renderTemplate(opts.template, {
     prompt: opts.prompt,
     rubric: opts.rubric,
@@ -63,22 +68,27 @@ export async function runJudge(opts: {
       messages: [{ role: 'user', content: [{ type: 'text', text: 'Grade the result above using the rubric.' }] }],
       tools: [],
       thinking: 'off',
-      maxOutputTokens: Math.min(2048, opts.model.maxOutputTokens),
+      maxOutputTokens: opts.model.maxOutputTokens,
     },
     opts.signal,
     () => {},
   );
+  const text = out.content
+    .filter((block) => block.type === 'text')
+    .map((block) => block.text)
+    .join('');
+  let verdict: JudgeVerdict =
+    out.stopReason === 'error' || out.stopReason === 'aborted'
+      ? { error: out.errorMessage ?? 'Judge interrupted' }
+      : parseJudge(text);
+  if (out.stopReason === 'maxTokens' && 'error' in verdict)
+    verdict = {
+      error: `Judge output budget exhausted (${opts.model.maxOutputTokens} tokens) before a complete verdict.`,
+    };
   return {
-    verdict:
-      out.stopReason === 'error' || out.stopReason === 'aborted'
-        ? { error: out.errorMessage ?? 'Judge interrupted' }
-        : parseJudge(
-            out.content
-              .filter((b) => b.type === 'text')
-              .map((b) => b.text)
-              .join(''),
-          ),
+    verdict,
     usage: out.usage,
     ...(out.cache ? { cache: out.cache } : {}),
+    response: { stopReason: out.stopReason, text },
   };
 }

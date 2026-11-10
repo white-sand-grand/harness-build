@@ -3,5 +3,6 @@
   "split": "dev",
   "prompt": "Change the timeout constant in settings.cjs from 10 to 20. Preserve every CRLF line ending and the other setting. Verify with node check.cjs.",
   "check": { "command": "node check.cjs" },
+  "protectedFiles": ["check.cjs"],
   "tags": ["crlf", "edit"]
 }

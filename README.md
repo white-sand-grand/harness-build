@@ -231,7 +231,7 @@ Dream 只有 read/write/edit 工具，写入只允许记忆目录，不能修改
 
 每次尝试使用独立工作区、home 和会话，先保存代码的 Git 初始快照，再运行 agent，最后执行任务定义的检查命令。**检查退出码为 0 且没有超时或中断才算通过**；配置了模型评分（judge）的任务，还需要评分通过。模型评分依据任务要求、代码 diff、最终回复和评分标准，返回分数、是否通过及理由。
 
-结果保存为 `results.jsonl`、`run.json`、`summary.md`，同时保留提示词快照、工作区和会话记录。可以追查一次失败到底是修改不正确、准备环境失败，还是 harness 本身出错。
+结果保存为 `results.jsonl`、`run.json`、`summary.md`，同时保留提示词快照、工作区、会话和实际模型请求中的 system/tools。运行清单记录任务与 fixture、模型配置、评分器、运行时及源码的 hash。任务通过 `protectedFiles` 声明独立检查资产，执行前后核验；这些文件被修改时，该次评测无效。
 
 ```sh
 mh eval run --provider openai --model gpt-6.1-sol --split all --repeat 2 --concurrency 2
@@ -244,9 +244,19 @@ mh eval compare <baseline-run> <candidate-run>
 
 完整流程是：**运行基线 → 分析 dev 失败 → 生成提示词候选 → 用相同任务和模型再跑 → 分别比较 dev/heldout**。
 
-Analyze 只输入 dev 失败结果、对应会话记录和提示词副本，不输入 heldout。它只提供 read/write/edit，写入限于临时分析目录，最后产出独立变体和 `analysis.md`。默认 prompts 不会被替换；是否采用候选由使用者决定。没有 dev 失败时，直接复制原提示词并报告无需修改，不调用模型。
+Analyze 输入可分析的 dev 失败记录、少量成功对照和提示词副本，受限读取范围不包含 heldout。至少两个失败 attempt 提供依据时才调用优化模型；环境故障、无效评分等不能直接当作提示词问题。每次只允许修改一个系统提示词或工具说明，保留模板变量，生成独立变体、`analysis.md` 和带证据引用的 `proposal.json`。评分器和其他组件固定，默认 prompts 不会被替换。
 
 比较报告分别展示 dev/heldout 的通过率、平均 token、轮数与工具错误。重复运行可以观察波动；这 8 个小任务主要用于开发回归，不代表通用编码能力。基线与候选相同时，也不能把重复通过解释为优化收益。
+
+也可以用有预算的优化循环自动连接这些步骤。在项目根目录的 PowerShell 7 或 WSL Ubuntu bash 中，配置好模型连接后执行：
+
+```sh
+node src/cli/main.ts evolve --provider anthropic --model step-5-preview --rounds 3 --candidates 2 --repeat 2 --targets system.md,tools/edit.md --max-calls 200 --max-tokens 1000000 --timeout 1800
+```
+
+Evolve 先运行 dev 基线，再生成少量独立候选，用相同任务比较父子版本。入围者与原始基线重新做一轮 dev 确认，通过后才进行最终 heldout 审计。退化、执行故障、无效 judge 或不可比较的实验不能被推荐。报告分别记录 actor、优化器和 judge 消耗；用量缺失时保留为未知。开发数据仍同时用于搜索和选优，需要更多独立任务才能评估泛化。
+
+结果写入 `evals/runs/<experiment>/report.md`；默认提示词保持原样，确认采用时显式使用报告中的候选目录。`--variant` 可指定起始版本，`--optimizer-model` 可单独指定优化模型。可以沿[第九章教程](docs/learn/09-prompt-evolution.md)学习实现，再查看 [Step 与 Kimi 的真实验证报告](docs/reports/prompt-evolution-validation.md)及公开逐次证据。完整机制与实施验收见[提示词自进化设计](docs/prompt-evolution-design.md)和[实施计划](docs/prompt-evolution-plan.md)。
 
 ## 源码设计
 

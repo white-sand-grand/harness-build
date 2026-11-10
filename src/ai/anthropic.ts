@@ -93,8 +93,10 @@ type AnthropicEvent = {
 export class AnthropicProvider implements Provider {
   readonly id = 'anthropic';
   private retrySleep?: Sleep;
-  constructor(opts: { sleep?: Sleep } = {}) {
+  #apiKey?: string;
+  constructor(opts: { sleep?: Sleep; apiKey?: string } = {}) {
     this.retrySleep = opts.sleep;
+    this.#apiKey = opts.apiKey;
   }
   async stream(req: ModelRequest, signal: AbortSignal, onEvent: (e: StreamEvent) => void): Promise<AssistantMessage> {
     const result = emptyAssistant(req, this.id);
@@ -117,7 +119,7 @@ export class AnthropicProvider implements Provider {
     let complete = false;
     try {
       const env = req.model.apiKeyEnv;
-      const key = (env ? process.env[env] : undefined) || process.env.ANTHROPIC_API_KEY;
+      const key = this.#apiKey || (env ? process.env[env] : undefined) || process.env.ANTHROPIC_API_KEY;
       const bearer = key ? undefined : process.env.ANTHROPIC_AUTH_TOKEN;
       if (!key && !bearer)
         throw new Error(`Missing API key. Set ${env ?? 'ANTHROPIC_API_KEY'} or ANTHROPIC_AUTH_TOKEN.`);

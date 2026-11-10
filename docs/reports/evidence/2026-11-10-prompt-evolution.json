@@ -1,0 +1,4389 @@
+{
+  "schemaVersion": 1,
+  "reportDate": "2026-11-10",
+  "provenanceNote": "Whitelisted fields exported from local run artifacts. Original result-file hashes bind each summary to its source; private paths, transcripts, headers, credentials and raw check output are omitted.",
+  "experiments": [
+    {
+      "id": "step-normal",
+      "sourceRunId": "step-evolution-final-1794238217804/normal",
+      "model": "step-5-preview",
+      "endpoint": "https://api.stepfun.com/step_plan/v1/messages",
+      "decision": "unchanged",
+      "stopReason": "noDevFailures",
+      "audit": "unchanged",
+      "resources": {
+        "limits": {
+          "maxModelCalls": 240,
+          "maxTokens": 1000000,
+          "maxDurationSec": 750
+        },
+        "calls": {
+          "actor": 110,
+          "optimizer": 0,
+          "judge": 2
+        },
+        "responses": {
+          "actor": 110,
+          "optimizer": 0,
+          "judge": 2
+        },
+        "usage": {
+          "actor": {
+            "input": 99880,
+            "output": 31212,
+            "cacheRead": 224000,
+            "cacheWrite": 0
+          },
+          "optimizer": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "judge": {
+            "input": 2410,
+            "output": 1048,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        "totalTokens": 358550,
+        "usageComplete": true,
+        "cost": null,
+        "durationMs": 307777
+      },
+      "phases": [
+        {
+          "phase": "baseline-dev",
+          "sourceResultsSha256": "4a0e4ef228aa668ccc2fd77449652fe05d8b386a0e8250eae11da6bc02925dae",
+          "provenance": {
+            "contractHash": "f19f371dad0b588a7714d0ee283ee1d968d23c234a5ee06f8cc340f4478fc955",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5454,
+                "output": 1040,
+                "cacheRead": 11520,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 9,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4821,
+                "output": 1541,
+                "cacheRead": 10240,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 8,
+              "usage": {
+                "input": 5777,
+                "output": 922,
+                "cacheRead": 13568,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 8,
+                "judge": 0
+              },
+              "toolCalls": 11,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 8,
+              "usage": {
+                "input": 5789,
+                "output": 1683,
+                "cacheRead": 15616,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 8,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 3465,
+                "output": 908,
+                "cacheRead": 4864,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 7256,
+                "output": 1142,
+                "cacheRead": 9216,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 11,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 6996,
+                "output": 1734,
+                "cacheRead": 14848,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 10,
+              "usage": {
+                "input": 7876,
+                "output": 2772,
+                "cacheRead": 28416,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 10,
+                "judge": 0
+              },
+              "toolCalls": 13,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 4895,
+                "output": 2103,
+                "cacheRead": 9216,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 12,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 7772,
+                "output": 1818,
+                "cacheRead": 5632,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 9,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-baseline",
+          "sourceResultsSha256": "f06f90c4c4c08762464c0b008d275858c919474a21bfb4c80f874c7f56053a3c",
+          "provenance": {
+            "contractHash": "a06003407788dec2154fe8bf0c4f551487ebf0888ecc94c66119796069a25e0c",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 6,
+          "reliablyPassed": 6,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 9,
+              "usage": {
+                "input": 13789,
+                "output": 9168,
+                "cacheRead": 40448,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 9,
+                "judge": 1
+              },
+              "toolCalls": 11,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 4204,
+                "output": 1715,
+                "cacheRead": 4608,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 1
+              },
+              "toolCalls": 5,
+              "toolErrors": 1,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5695,
+                "output": 1111,
+                "cacheRead": 11520,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4511,
+                "output": 1054,
+                "cacheRead": 9216,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 10,
+              "usage": {
+                "input": 7042,
+                "output": 2405,
+                "cacheRead": 25088,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 10,
+                "judge": 0
+              },
+              "toolCalls": 16,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 6948,
+                "output": 1144,
+                "cacheRead": 9984,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 11,
+              "toolErrors": 0
+            }
+          ]
+        }
+      ],
+      "candidateDecisions": []
+    },
+    {
+      "id": "step-controlled",
+      "sourceRunId": "step-evolution-controlled-1794239265877/controlled-repair",
+      "model": "step-5-preview",
+      "endpoint": "https://api.stepfun.com/step_plan/v1/messages",
+      "decision": "recommend",
+      "stopReason": "insufficientEvidence",
+      "audit": "passed",
+      "resources": {
+        "limits": {
+          "maxModelCalls": 360,
+          "maxTokens": 1500000,
+          "maxDurationSec": 900
+        },
+        "calls": {
+          "actor": 196,
+          "optimizer": 9,
+          "judge": 4
+        },
+        "responses": {
+          "actor": 196,
+          "optimizer": 9,
+          "judge": 4
+        },
+        "usage": {
+          "actor": {
+            "input": 166449,
+            "output": 35844,
+            "cacheRead": 268288,
+            "cacheWrite": 0
+          },
+          "optimizer": {
+            "input": 37767,
+            "output": 12615,
+            "cacheRead": 198144,
+            "cacheWrite": 0
+          },
+          "judge": {
+            "input": 2675,
+            "output": 1454,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        "totalTokens": 723236,
+        "usageComplete": true,
+        "cost": null,
+        "durationMs": 463700
+      },
+      "phases": [
+        {
+          "phase": "baseline-dev",
+          "sourceResultsSha256": "901e44adbdacd9986dd136ed30683250260f0d9afb85a0d2e3f4c732bf48ae28",
+          "provenance": {
+            "contractHash": "f19f371dad0b588a7714d0ee283ee1d968d23c234a5ee06f8cc340f4478fc955",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1328,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1326,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1309,
+                "output": 102,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1307,
+                "output": 88,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1316,
+                "output": 98,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1314,
+                "output": 103,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1303,
+                "output": 83,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1302,
+                "output": 84,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1318,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1317,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "candidate-1-dev",
+          "sourceResultsSha256": "08867a8d794bd002bdd73e9187fbc8c8774c9f3e384c3855797cf64e7d893953",
+          "provenance": {
+            "contractHash": "f19f371dad0b588a7714d0ee283ee1d968d23c234a5ee06f8cc340f4478fc955",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4427,
+                "output": 620,
+                "cacheRead": 7424,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 6250,
+                "output": 805,
+                "cacheRead": 5888,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4983,
+                "output": 1164,
+                "cacheRead": 10752,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 5922,
+                "output": 605,
+                "cacheRead": 5632,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4301,
+                "output": 874,
+                "cacheRead": 7680,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 4890,
+                "output": 1154,
+                "cacheRead": 10496,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5664,
+                "output": 1803,
+                "cacheRead": 14848,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 6116,
+                "output": 1376,
+                "cacheRead": 13312,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5535,
+                "output": 1448,
+                "cacheRead": 14592,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 13,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4832,
+                "output": 1381,
+                "cacheRead": 10240,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 15,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "confirmation-baseline",
+          "sourceResultsSha256": "a137b0f5d0495068fc3106e5928e4917393f5f99ec4eee2e2223e1467c674520",
+          "provenance": {
+            "contractHash": "f19f371dad0b588a7714d0ee283ee1d968d23c234a5ee06f8cc340f4478fc955",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1328,
+                "output": 19,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1328,
+                "output": 70,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1310,
+                "output": 69,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1309,
+                "output": 99,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1315,
+                "output": 100,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1318,
+                "output": 187,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1306,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1303,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1318,
+                "output": 82,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1319,
+                "output": 135,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "confirmation-candidate",
+          "sourceResultsSha256": "38fed752e37c5461bde185ac9cec274012c97389a9e5f71fa0f8c528f1fd6428",
+          "provenance": {
+            "contractHash": "f19f371dad0b588a7714d0ee283ee1d968d23c234a5ee06f8cc340f4478fc955",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4664,
+                "output": 1264,
+                "cacheRead": 8704,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4266,
+                "output": 891,
+                "cacheRead": 7680,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4447,
+                "output": 674,
+                "cacheRead": 7424,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 8,
+              "usage": {
+                "input": 5520,
+                "output": 1117,
+                "cacheRead": 13056,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 8,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 3706,
+                "output": 583,
+                "cacheRead": 5632,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5286,
+                "output": 1172,
+                "cacheRead": 9728,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 9,
+              "usage": {
+                "input": 6967,
+                "output": 1864,
+                "cacheRead": 18944,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 9,
+                "judge": 0
+              },
+              "toolCalls": 12,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 4914,
+                "output": 1488,
+                "cacheRead": 12544,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4604,
+                "output": 1111,
+                "cacheRead": 9728,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 11,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4330,
+                "output": 1449,
+                "cacheRead": 9984,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 13,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-baseline",
+          "sourceResultsSha256": "33fa04276ef26519f4d11ff271d1374814d4824e63f978fa6f845d7ea8bf5041",
+          "provenance": {
+            "contractHash": "a06003407788dec2154fe8bf0c4f551487ebf0888ecc94c66119796069a25e0c",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1547,
+                "output": 371,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 1
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": false,
+                "score": 0
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1547,
+                "output": 456,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 1
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": false,
+                "score": 0
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1333,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1336,
+                "output": 73,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1320,
+                "output": 7,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 1320,
+                "output": 98,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-candidate",
+          "sourceResultsSha256": "9357361534b50e28d3c66c098cc4e5407c542e7c67e94b60a76db2b5f0553631",
+          "provenance": {
+            "contractHash": "a06003407788dec2154fe8bf0c4f551487ebf0888ecc94c66119796069a25e0c",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 6,
+          "reliablyPassed": 6,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 5474,
+                "output": 3148,
+                "cacheRead": 7424,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 1
+              },
+              "toolCalls": 7,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 6577,
+                "output": 3952,
+                "cacheRead": 11520,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 1
+              },
+              "toolCalls": 7,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5144,
+                "output": 1480,
+                "cacheRead": 11520,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 4242,
+                "output": 434,
+                "cacheRead": 6912,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 9,
+              "usage": {
+                "input": 5914,
+                "output": 1112,
+                "cacheRead": 14080,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 9,
+                "judge": 0
+              },
+              "toolCalls": 12,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 7,
+              "usage": {
+                "input": 5452,
+                "output": 1956,
+                "cacheRead": 12544,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 7,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            }
+          ]
+        }
+      ],
+      "candidateDecisions": [
+        {
+          "id": "20261109-154807-294abb",
+          "parentId": "baseline",
+          "round": 1,
+          "targetFile": "system.md",
+          "decision": "recommend"
+        },
+        {
+          "id": "20261109-155146-b3d142",
+          "parentId": "20261109-154807-294abb",
+          "round": 1,
+          "targetFile": "system.md",
+          "decision": "invalid"
+        }
+      ],
+      "confirmationDecision": "recommend",
+      "selectedPromptSha256": "3b90e0dca2eeff57b3a937cf31d92f01188d34ae4e765856fe8b1df7fd5fc67d"
+    },
+    {
+      "id": "kimi-normal-first",
+      "sourceRunId": "kimi-k3-1-pro-highspeed-evolution-1794242125836/normal",
+      "model": "kimi-k3.1-pro-highspeed",
+      "endpoint": "https://api.moonshot.cn/anthropic",
+      "decision": "unchanged",
+      "stopReason": "noDevFailures",
+      "audit": "unchanged",
+      "resources": {
+        "limits": {
+          "maxModelCalls": 240,
+          "maxTokens": 1000000,
+          "maxDurationSec": 750
+        },
+        "calls": {
+          "actor": 76,
+          "optimizer": 0,
+          "judge": 2
+        },
+        "responses": {
+          "actor": 76,
+          "optimizer": 0,
+          "judge": 2
+        },
+        "usage": {
+          "actor": {
+            "input": 9048,
+            "output": 14222,
+            "cacheRead": 124416,
+            "cacheWrite": 29952
+          },
+          "optimizer": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "judge": {
+            "input": 144,
+            "output": 528,
+            "cacheRead": 0,
+            "cacheWrite": 1024
+          }
+        },
+        "totalTokens": 179334,
+        "usageComplete": true,
+        "cost": null,
+        "durationMs": 171227
+      },
+      "phases": [
+        {
+          "phase": "baseline-dev",
+          "sourceResultsSha256": "a9dcd62d7bbfa0c1b75c14a59ab2bc1d822150bb199d451cc38bcd2b4c58c532",
+          "provenance": {
+            "contractHash": "4d4da8e0381692ef462ab50e3ff852e9832710c8d2677a90435f4c0415e30645",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 522,
+                "output": 845,
+                "cacheRead": 7168,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 774,
+                "output": 1393,
+                "cacheRead": 11776,
+                "cacheWrite": 4352
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 589,
+                "output": 498,
+                "cacheRead": 5632,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 509,
+                "output": 862,
+                "cacheRead": 5120,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 231,
+                "output": 406,
+                "cacheRead": 5376,
+                "cacheWrite": 768
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 356,
+                "output": 490,
+                "cacheRead": 5376,
+                "cacheWrite": 768
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 762,
+                "output": 659,
+                "cacheRead": 11520,
+                "cacheWrite": 2304
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 838,
+                "output": 874,
+                "cacheRead": 11520,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 740,
+                "output": 854,
+                "cacheRead": 9216,
+                "cacheWrite": 2304
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 537,
+                "output": 1038,
+                "cacheRead": 9216,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-baseline",
+          "sourceResultsSha256": "50eb2194464d02bbd759bfb5cb9a381cb269beacc47bb00c2b78b84127554052",
+          "provenance": {
+            "contractHash": "6d4258d4e7ebf0a1a55d86c8fe94c63bf053dc120b449f79e95a97246e6a8e81",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 6,
+          "reliablyPassed": 6,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 370,
+                "output": 2443,
+                "cacheRead": 6144,
+                "cacheWrite": 3072
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 1
+              },
+              "toolCalls": 4,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 3,
+              "usage": {
+                "input": 306,
+                "output": 1438,
+                "cacheRead": 3584,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 3,
+                "judge": 1
+              },
+              "toolCalls": 2,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 592,
+                "output": 741,
+                "cacheRead": 8448,
+                "cacheWrite": 1792
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 664,
+                "output": 622,
+                "cacheRead": 7680,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 677,
+                "output": 859,
+                "cacheRead": 8448,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 725,
+                "output": 728,
+                "cacheRead": 8192,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            }
+          ]
+        }
+      ],
+      "candidateDecisions": []
+    },
+    {
+      "id": "kimi-interrupted",
+      "sourceRunId": "kimi-k3-1-pro-highspeed-evolution-1794242125836/controlled-repair",
+      "model": "kimi-k3.1-pro-highspeed",
+      "endpoint": "https://api.moonshot.cn/anthropic",
+      "decision": "inconclusive",
+      "stopReason": "error",
+      "audit": "notRun",
+      "resources": {
+        "limits": {
+          "maxModelCalls": 360,
+          "maxTokens": 1500000,
+          "maxDurationSec": 900
+        },
+        "calls": {
+          "actor": 40,
+          "optimizer": 7,
+          "judge": 0
+        },
+        "responses": {
+          "actor": 40,
+          "optimizer": 7,
+          "judge": 0
+        },
+        "usage": {
+          "actor": {
+            "input": 3778,
+            "output": 5168,
+            "cacheRead": 43264,
+            "cacheWrite": 13565
+          },
+          "optimizer": {
+            "input": 910,
+            "output": 5535,
+            "cacheRead": 87040,
+            "cacheWrite": 27136
+          },
+          "judge": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        "totalTokens": 186396,
+        "usageComplete": false,
+        "cost": null,
+        "durationMs": 148243
+      },
+      "phases": [
+        {
+          "phase": "baseline-dev",
+          "sourceResultsSha256": "954896fca2a4cce57d633bfd0734dfecd90e49e3078d4588e2dfa70e91ea771f",
+          "provenance": {
+            "contractHash": "4d4da8e0381692ef462ab50e3ff852e9832710c8d2677a90435f4c0415e30645",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 107,
+                "output": 56,
+                "cacheRead": 512,
+                "cacheWrite": 512
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 108,
+                "output": 60,
+                "cacheRead": 512,
+                "cacheWrite": 512
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 91,
+                "output": 53,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 91,
+                "output": 50,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 100,
+                "output": 83,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 99,
+                "output": 49,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 89,
+                "output": 49,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 87,
+                "output": 72,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 103,
+                "output": 55,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 102,
+                "output": 60,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "candidate-1-dev",
+          "sourceResultsSha256": "6d740a0e41447ead9c5c9655abcdbd5ae1db4c39fe4b6faf7af791b359a42284",
+          "provenance": {
+            "contractHash": "4d4da8e0381692ef462ab50e3ff852e9832710c8d2677a90435f4c0415e30645",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "28176b5e6074de618cb80fb0a13aeda0cd89621c33eb56329bfc02e2af11c277",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 5,
+          "reliablyPassed": 5,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 787,
+                "output": 958,
+                "cacheRead": 10752,
+                "cacheWrite": 3325
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 9,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 653,
+                "output": 962,
+                "cacheRead": 9728,
+                "cacheWrite": 2304
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 9,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 3,
+              "usage": {
+                "input": 292,
+                "output": 672,
+                "cacheRead": 3328,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 3,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 483,
+                "output": 1248,
+                "cacheRead": 5888,
+                "cacheWrite": 2048
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 339,
+                "output": 411,
+                "cacheRead": 4864,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "error",
+              "turns": 2,
+              "usage": {
+                "input": 129,
+                "output": 188,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 2,
+                "judge": 0
+              },
+              "toolCalls": 1,
+              "toolErrors": 0,
+              "executionFailure": "http401"
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "error",
+              "turns": 1,
+              "usage": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "executionFailure": "http401"
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "error",
+              "turns": 2,
+              "usage": {
+                "input": 118,
+                "output": 142,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 2,
+                "judge": 0
+              },
+              "toolCalls": 1,
+              "toolErrors": 0,
+              "executionFailure": "http401"
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "error",
+              "turns": 1,
+              "usage": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "executionFailure": "http401"
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "error",
+              "turns": 1,
+              "usage": {
+                "input": 0,
+                "output": 0,
+                "cacheRead": 0,
+                "cacheWrite": 0
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "executionFailure": "http401"
+            }
+          ]
+        }
+      ],
+      "candidateDecisions": [
+        {
+          "id": "20261109-163837-7ea03e",
+          "parentId": "baseline",
+          "round": 1,
+          "targetFile": "system.md",
+          "decision": "inconclusive"
+        },
+        {
+          "id": "20261109-164046-5e6d45",
+          "parentId": "baseline",
+          "round": 1,
+          "targetFile": "system.md",
+          "decision": "invalid"
+        }
+      ]
+    },
+    {
+      "id": "kimi-normal",
+      "sourceRunId": "kimi-highspeed-final-1794269472406/normal",
+      "model": "kimi-k3.1-pro-highspeed",
+      "endpoint": "https://api.moonshot.cn/anthropic",
+      "decision": "unchanged",
+      "stopReason": "noDevFailures",
+      "audit": "unchanged",
+      "resources": {
+        "limits": {
+          "maxModelCalls": 240,
+          "maxTokens": 1000000,
+          "maxDurationSec": 750
+        },
+        "calls": {
+          "actor": 76,
+          "optimizer": 0,
+          "judge": 2
+        },
+        "responses": {
+          "actor": 76,
+          "optimizer": 0,
+          "judge": 2
+        },
+        "usage": {
+          "actor": {
+            "input": 8448,
+            "output": 12662,
+            "cacheRead": 122624,
+            "cacheWrite": 28672
+          },
+          "optimizer": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "judge": {
+            "input": 66,
+            "output": 392,
+            "cacheRead": 0,
+            "cacheWrite": 1024
+          }
+        },
+        "totalTokens": 173888,
+        "usageComplete": true,
+        "cost": null,
+        "durationMs": 143198
+      },
+      "phases": [
+        {
+          "phase": "baseline-dev",
+          "sourceResultsSha256": "f68095e59a9e2c537d14c7cf61413df43edce997d7c02cd2b162e38f93780f3e",
+          "provenance": {
+            "contractHash": "e53f875d85b39e350d1bebf0584a2e682054c3993b71b8ce720df323c75f207d",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 738,
+                "output": 992,
+                "cacheRead": 9728,
+                "cacheWrite": 2816
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 534,
+                "output": 678,
+                "cacheRead": 6912,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 418,
+                "output": 501,
+                "cacheRead": 5376,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 311,
+                "output": 904,
+                "cacheRead": 8960,
+                "cacheWrite": 1792
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 269,
+                "output": 467,
+                "cacheRead": 5120,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 324,
+                "output": 497,
+                "cacheRead": 5376,
+                "cacheWrite": 768
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 948,
+                "output": 731,
+                "cacheRead": 11264,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 788,
+                "output": 755,
+                "cacheRead": 11776,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 566,
+                "output": 1137,
+                "cacheRead": 9728,
+                "cacheWrite": 2816
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 12,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 629,
+                "output": 1118,
+                "cacheRead": 9472,
+                "cacheWrite": 2816
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 11,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-baseline",
+          "sourceResultsSha256": "2c18712177a3852bf3c3a5ee305ef80a2614aa6a464396495e9fa9d620db9b9a",
+          "provenance": {
+            "contractHash": "3de3c78e332476e0167dc341df00d7cc75ba3f515959db68ce9178f915fafeae",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 6,
+          "reliablyPassed": 6,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 3,
+              "usage": {
+                "input": 363,
+                "output": 1407,
+                "cacheRead": 3584,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 3,
+                "judge": 1
+              },
+              "toolCalls": 2,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 3,
+              "usage": {
+                "input": 207,
+                "output": 1120,
+                "cacheRead": 3584,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 3,
+                "judge": 1
+              },
+              "toolCalls": 2,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 641,
+                "output": 638,
+                "cacheRead": 7424,
+                "cacheWrite": 1792
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 611,
+                "output": 653,
+                "cacheRead": 7680,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 778,
+                "output": 733,
+                "cacheRead": 8192,
+                "cacheWrite": 1792
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 9,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 389,
+                "output": 723,
+                "cacheRead": 8448,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            }
+          ]
+        }
+      ],
+      "candidateDecisions": []
+    },
+    {
+      "id": "kimi-controlled",
+      "sourceRunId": "kimi-highspeed-final-1794269472406/controlled-repair",
+      "model": "kimi-k3.1-pro-highspeed",
+      "endpoint": "https://api.moonshot.cn/anthropic",
+      "decision": "recommend",
+      "stopReason": "insufficientEvidence",
+      "audit": "passed",
+      "resources": {
+        "limits": {
+          "maxModelCalls": 360,
+          "maxTokens": 1500000,
+          "maxDurationSec": 900
+        },
+        "calls": {
+          "actor": 151,
+          "optimizer": 5,
+          "judge": 4
+        },
+        "responses": {
+          "actor": 151,
+          "optimizer": 5,
+          "judge": 4
+        },
+        "usage": {
+          "actor": {
+            "input": 16365,
+            "output": 25082,
+            "cacheRead": 202752,
+            "cacheWrite": 55805
+          },
+          "optimizer": {
+            "input": 657,
+            "output": 3803,
+            "cacheRead": 60160,
+            "cacheWrite": 25344
+          },
+          "judge": {
+            "input": 247,
+            "output": 759,
+            "cacheRead": 0,
+            "cacheWrite": 1536
+          }
+        },
+        "totalTokens": 392510,
+        "usageComplete": true,
+        "cost": null,
+        "durationMs": 355427
+      },
+      "phases": [
+        {
+          "phase": "baseline-dev",
+          "sourceResultsSha256": "cf35e159feb536d91e8d7a1681050545295a1fcca15544fd2960a84f245fbfe5",
+          "provenance": {
+            "contractHash": "e53f875d85b39e350d1bebf0584a2e682054c3993b71b8ce720df323c75f207d",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 93,
+                "output": 126,
+                "cacheRead": 512,
+                "cacheWrite": 512
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 91,
+                "output": 38,
+                "cacheRead": 512,
+                "cacheWrite": 512
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 76,
+                "output": 82,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 75,
+                "output": 43,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 86,
+                "output": 61,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 82,
+                "output": 44,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 73,
+                "output": 40,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 73,
+                "output": 88,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 86,
+                "output": 48,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 86,
+                "output": 47,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "candidate-1-dev",
+          "sourceResultsSha256": "96f386860e6a1228d12f221af42fc1b73ef51b1734dbce733e847acab80d13ac",
+          "provenance": {
+            "contractHash": "e53f875d85b39e350d1bebf0584a2e682054c3993b71b8ce720df323c75f207d",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 413,
+                "output": 1237,
+                "cacheRead": 7168,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 427,
+                "output": 923,
+                "cacheRead": 6912,
+                "cacheWrite": 2045
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 363,
+                "output": 618,
+                "cacheRead": 4864,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 3,
+              "usage": {
+                "input": 396,
+                "output": 717,
+                "cacheRead": 3328,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 3,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 599,
+                "output": 614,
+                "cacheRead": 5120,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 598,
+                "output": 440,
+                "cacheRead": 4608,
+                "cacheWrite": 768
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 926,
+                "output": 920,
+                "cacheRead": 9984,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 825,
+                "output": 716,
+                "cacheRead": 9984,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 518,
+                "output": 988,
+                "cacheRead": 9472,
+                "cacheWrite": 2304
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 622,
+                "output": 1225,
+                "cacheRead": 9472,
+                "cacheWrite": 3328
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 12,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "confirmation-baseline",
+          "sourceResultsSha256": "c82cc2f2e9f7fcd1b000c3c38aae0bde211a0e8a7db4c78caed28483ccb2395b",
+          "provenance": {
+            "contractHash": "e53f875d85b39e350d1bebf0584a2e682054c3993b71b8ce720df323c75f207d",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 91,
+                "output": 64,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 93,
+                "output": 37,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 77,
+                "output": 68,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 76,
+                "output": 45,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 82,
+                "output": 51,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 83,
+                "output": 263,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 75,
+                "output": 62,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 73,
+                "output": 84,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 89,
+                "output": 49,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 84,
+                "output": 42,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "confirmation-candidate",
+          "sourceResultsSha256": "a643f81af453c51407ad55126e5be1054abf404983c13d90d9cb86eb648e8833",
+          "provenance": {
+            "contractHash": "e53f875d85b39e350d1bebf0584a2e682054c3993b71b8ce720df323c75f207d",
+            "tasksHash": "daecc15c2f59e506414d0275df79da170d9bf36737ad87e9ddc14c4ff04ba646",
+            "taskHashes": {
+              "add-cli-flag": "83b1f57ca4e407f895c0592fe664a9ca0027e6ecaca1b2cbbe18002ebf80a716",
+              "crlf-edit": "809aa890a91a493c28eaee0cf97b98f87835f85fa98fe47721c7b8b2323deb79",
+              "find-in-big-log": "90ff49cd5eef3116a06f02bf3f88fcb2ad6a4818ad2b1cb6070f318fbfae3405",
+              "fix-off-by-one": "a8d8ac0d4fc98a252f186c53ee8125b274ee60f5745c88547df2509c05ac8ac8",
+              "rename-across-files": "ed5fb030433df5e9b820456be9b0277c644e764872d160f17c657ed3c170d0a4"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "add-cli-flag": 30,
+              "crlf-edit": 30,
+              "find-in-big-log": 30,
+              "fix-off-by-one": 30,
+              "rename-across-files": 30
+            }
+          },
+          "expectedAttempts": 10,
+          "passed": 10,
+          "reliablyPassed": 10,
+          "results": [
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 513,
+                "output": 832,
+                "cacheRead": 6656,
+                "cacheWrite": 2048
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "add-cli-flag",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 600,
+                "output": 1006,
+                "cacheRead": 10752,
+                "cacheWrite": 3072
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 517,
+                "output": 1169,
+                "cacheRead": 5376,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "crlf-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 444,
+                "output": 565,
+                "cacheRead": 5120,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 466,
+                "output": 468,
+                "cacheRead": 4608,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 3,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "find-in-big-log",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 461,
+                "output": 869,
+                "cacheRead": 5120,
+                "cacheWrite": 1024
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 0
+              },
+              "toolCalls": 4,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 602,
+                "output": 781,
+                "cacheRead": 10752,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 1
+            },
+            {
+              "taskId": "fix-off-by-one",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 580,
+                "output": 688,
+                "cacheRead": 11264,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 7,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 670,
+                "output": 1103,
+                "cacheRead": 7424,
+                "cacheWrite": 2304
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 9,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "rename-across-files",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 443,
+                "output": 1228,
+                "cacheRead": 7680,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 10,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-baseline",
+          "sourceResultsSha256": "72891a91f978b0cc2fc0d6e2e48683ea91aab7eeb40b240ef07790cd23931f6e",
+          "provenance": {
+            "contractHash": "3de3c78e332476e0167dc341df00d7cc75ba3f515959db68ce9178f915fafeae",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 0,
+          "reliablyPassed": 0,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 131,
+                "output": 224,
+                "cacheRead": 768,
+                "cacheWrite": 512
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 1
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": false,
+                "score": 0
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 132,
+                "output": 218,
+                "cacheRead": 768,
+                "cacheWrite": 512
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 1
+              },
+              "toolCalls": 0,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": false,
+                "score": 0
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 96,
+                "output": 75,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 94,
+                "output": 211,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 86,
+                "output": 45,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "fail",
+              "endReason": "done",
+              "turns": 1,
+              "usage": {
+                "input": 87,
+                "output": 40,
+                "cacheRead": 768,
+                "cacheWrite": 256
+              },
+              "modelCalls": {
+                "actor": 1,
+                "judge": 0
+              },
+              "toolCalls": 0,
+              "toolErrors": 0
+            }
+          ]
+        },
+        {
+          "phase": "audit-candidate",
+          "sourceResultsSha256": "0d6a9c11c0a196341660909269e8687b53d95df8c6c3a41934ad7be4f69deadb",
+          "provenance": {
+            "contractHash": "3de3c78e332476e0167dc341df00d7cc75ba3f515959db68ce9178f915fafeae",
+            "tasksHash": "95381a5b67520f827043ee3471962660e918a6680709d1ca884084bc62648924",
+            "taskHashes": {
+              "explain-no-edit": "f54714da18a7aafc5df17bd168222a85cf10bdcd8b2e1cf8add9821b291eca69",
+              "json-config-migrate": "e4722aac3695aa20cb91218901965fe701802da4947d6907a303a0b842425813",
+              "recover-from-error": "50aafa77773e35f2725636f96cc62a11b0937e57fe5310461e9bbdc682ef493d"
+            },
+            "evaluatorHash": "56c21932d8c6781cf2d37b1aacd1274ba2be743df552c3b03824f890bb18b90c",
+            "harnessHash": "814c889e406daaf1b36a7dc7aadf7021e3e366872cc217b4a0336b78fa310651",
+            "environmentHash": "4cfa740d904ab0b3112bdc63f059ca21ec4878f56335f81abd38dca57eecbd01",
+            "platform": "win32",
+            "arch": "x64",
+            "node": "v24.18.0",
+            "repeat": 2,
+            "concurrency": 2,
+            "maxTurns": {
+              "explain-no-edit": 30,
+              "json-config-migrate": 30,
+              "recover-from-error": 30
+            }
+          },
+          "expectedAttempts": 6,
+          "passed": 6,
+          "reliablyPassed": 6,
+          "results": [
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 3,
+              "usage": {
+                "input": 453,
+                "output": 1278,
+                "cacheRead": 2816,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 3,
+                "judge": 1
+              },
+              "toolCalls": 3,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "explain-no-edit",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 4,
+              "usage": {
+                "input": 521,
+                "output": 2146,
+                "cacheRead": 4864,
+                "cacheWrite": 2560
+              },
+              "modelCalls": {
+                "actor": 4,
+                "judge": 1
+              },
+              "toolCalls": 5,
+              "toolErrors": 0,
+              "judge": {
+                "valid": true,
+                "pass": true,
+                "score": 1
+              }
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 6,
+              "usage": {
+                "input": 825,
+                "output": 901,
+                "cacheRead": 8704,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 6,
+                "judge": 0
+              },
+              "toolCalls": 6,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "json-config-migrate",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 743,
+                "output": 624,
+                "cacheRead": 6400,
+                "cacheWrite": 1280
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 5,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 1,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 423,
+                "output": 905,
+                "cacheRead": 7936,
+                "cacheWrite": 1792
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            },
+            {
+              "taskId": "recover-from-error",
+              "attempt": 2,
+              "status": "pass",
+              "endReason": "done",
+              "turns": 5,
+              "usage": {
+                "input": 394,
+                "output": 685,
+                "cacheRead": 6912,
+                "cacheWrite": 1536
+              },
+              "modelCalls": {
+                "actor": 5,
+                "judge": 0
+              },
+              "toolCalls": 8,
+              "toolErrors": 0
+            }
+          ]
+        }
+      ],
+      "candidateDecisions": [
+        {
+          "id": "20261110-001358-fb0e47",
+          "parentId": "baseline",
+          "round": 1,
+          "targetFile": "system.md",
+          "decision": "recommend"
+        },
+        {
+          "id": "20261110-001607-66ba85",
+          "parentId": "20261110-001358-fb0e47",
+          "round": 1,
+          "targetFile": "system.md",
+          "decision": "invalid"
+        }
+      ],
+      "confirmationDecision": "recommend",
+      "selectedPromptSha256": "c1e474ce508ddd00c4bef7e37eb029a03052e6d48c46d08d66cef1ad297154c0"
+    }
+  ]
+}

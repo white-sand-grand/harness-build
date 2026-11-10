@@ -6,7 +6,7 @@ import { permissionHook, riskyCategory } from '../../../src/hooks/permission.ts'
 import { loadConfig } from '../../../src/app/config.ts';
 import { trustHash } from '../../../src/hooks/trust.ts';
 import { matchesGlob } from '../../../src/util/glob.ts';
-import { createWriteTool, createBashTool } from '../../../src/tools/index.ts';
+import { createWriteTool, createBashTool, createReadTool } from '../../../src/tools/index.ts';
 import { withTmpDir } from '../../helpers/tmp.ts';
 const write = createWriteTool('');
 for (const [category, yes, no] of [
@@ -111,6 +111,53 @@ test('yolo allows everything', async () =>
   withTmpDir(async (d) => {
     const h = permissionHook({ mode: 'yolo', root: d, allowedDirs: [], extraPatterns: [] });
     assert.equal((await h.beforeTool!(call('/outside/a'), write)).action, 'allow');
+  }));
+test('strict analysis paths deny outside reads and unlisted writes before yolo', async () =>
+  withTmpDir(async (d) => {
+    const evidence = join(d, 'evidence'),
+      output = join(d, 'proposal.json');
+    await mkdir(evidence);
+    await writeFile(join(evidence, 'allowed.txt'), 'evidence');
+    const h = permissionHook({
+      mode: 'yolo',
+      root: d,
+      allowedDirs: [],
+      extraPatterns: [],
+      strictReadRoots: [evidence],
+      strictWritePaths: [output],
+    });
+    const read = (path: string) => ({ type: 'toolCall' as const, id: 'r', name: 'read', args: { path } });
+    assert.equal((await h.beforeTool!(read(join(evidence, 'allowed.txt')), createReadTool(''))).action, 'allow');
+    assert.equal((await h.beforeTool!(read(join(d, 'heldout.txt')), createReadTool(''))).action, 'deny');
+    assert.equal((await h.beforeTool!(call(output), write)).action, 'allow');
+    assert.equal((await h.beforeTool!(call(join(d, 'judge.md')), write)).action, 'deny');
+    assert.equal((await h.beforeTool!(call(join(output, 'nested')), write)).action, 'deny');
+  }));
+test('strict analysis paths reject symlinks even when they point inside allowed roots', async () =>
+  withTmpDir(async (d) => {
+    const actual = join(d, 'actual'),
+      link = join(d, 'link');
+    await mkdir(actual);
+    await writeFile(join(actual, 'fact.txt'), 'fact');
+    await symlink(actual, link, process.platform === 'win32' ? 'junction' : 'dir');
+    const h = permissionHook({
+      mode: 'yolo',
+      root: d,
+      allowedDirs: [],
+      extraPatterns: [],
+      strictReadRoots: [d],
+      strictWritePaths: [join(link, 'fact.txt')],
+    });
+    assert.equal(
+      (
+        await h.beforeTool!(
+          { type: 'toolCall', id: 'r', name: 'read', args: { path: join(link, 'fact.txt') } },
+          createReadTool(''),
+        )
+      ).action,
+      'deny',
+    );
+    assert.equal((await h.beforeTool!(call(join(link, 'fact.txt')), write)).action, 'deny');
   }));
 test('merges global, project, cli in order', async () =>
   withTmpDir(async (d) => {

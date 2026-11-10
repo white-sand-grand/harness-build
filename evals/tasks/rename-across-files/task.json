@@ -3,5 +3,6 @@
   "split": "dev",
   "prompt": "Rename getUsr to getUser throughout the three files in src/. Update exports and imports, retain lookup behavior, and leave no getUsr identifier in src/. Run node check.cjs to verify.",
   "check": { "command": "node check.cjs" },
+  "protectedFiles": ["check.cjs", "api.test.cjs"],
   "tags": ["rename"]
 }

@@ -13,6 +13,7 @@ export type EvalTask = {
   judge?: { rubric: string };
   maxTurns?: number;
   tags?: string[];
+  protectedFiles?: string[];
 };
 export type AttemptResult = {
   taskId: string;
@@ -23,6 +24,7 @@ export type AttemptResult = {
   checkExitCode?: number;
   checkOutputTail?: string;
   judge?: { score: number; pass: boolean; reason: string } | { error: string };
+  judgeResponse?: { stopReason: string; text: string };
   turns: number;
   usage: Usage;
   cost?: number;
@@ -31,6 +33,10 @@ export type AttemptResult = {
   toolErrors: number;
   endReason: AgentEndReason;
   sessionPath: string;
+  integrityError?: string;
+  modelCalls?: { actor: number; judge: number };
+  modelUsage?: { actor: Usage; judge: Usage };
+  requestSnapshotsPath?: string;
 };
 const str: JsonSchema = { type: 'string' };
 const schema: JsonSchema = {
@@ -51,6 +57,7 @@ const schema: JsonSchema = {
     judge: { type: 'object', required: ['rubric'], additionalProperties: false, properties: { rubric: str } },
     maxTurns: { type: 'integer', minimum: 1 },
     tags: { type: 'array', items: str },
+    protectedFiles: { type: 'array', items: str },
   },
 };
 export function loadTasks(dir: string, opts: { pattern?: string; split?: 'dev' | 'heldout' | 'all' } = {}): EvalTask[] {
@@ -66,6 +73,14 @@ export function loadTasks(dir: string, opts: { pattern?: string; split?: 'dev' |
       const task = data as EvalTask;
       if (task.id !== e.name || !/^[-A-Za-z0-9_]+$/.test(task.id) || !task.prompt.trim() || !task.check.command.trim())
         throw new Error(`Invalid task identity/prompt/check: ${path}`);
+      if (
+        task.protectedFiles &&
+        (new Set(task.protectedFiles).size !== task.protectedFiles.length ||
+          task.protectedFiles.some(
+            (file) => /[\\:\0]/.test(file) || file.split('/').some((part) => !part || part === '.' || part === '..'),
+          ))
+      )
+        throw new Error(`Invalid protectedFiles in ${path}: use unique normalized relative file paths.`);
       return task;
     })
     .filter((t) => !opts.split || opts.split === 'all' || t.split === opts.split);

@@ -1,7 +1,7 @@
 import { mkdir, cp } from 'node:fs/promises';
 import { readFileSync, writeFileSync, appendFileSync, existsSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
-import type { Provider } from '../ai/index.ts';
+import type { Provider, AssistantMessage } from '../ai/index.ts';
 import { zeroUsage, addUsage, cost, resolveModel, AnthropicProvider, OpenAIProvider } from '../ai/index.ts';
 import { createSession } from '../session/index.ts';
 import { startRun } from '../app/run.ts';
@@ -12,7 +12,23 @@ import { spawnSync } from 'node:child_process';
 import { loadTasks, type EvalTask, type AttemptResult } from './task.ts';
 import { runJudge } from './judge.ts';
 import { renderSummary, summarizeTrace } from './report.ts';
-export type RunManifest = { v: 1; createdAt: string; model: string; variant: string; tasks: EvalTask[] };
+import {
+  createProvenance,
+  hashText,
+  protectedFilesError,
+  sanitizeForArtifact,
+  snapshotProtectedFiles,
+  stableJson,
+  type RunProvenance,
+} from './provenance.ts';
+export type RunManifest = {
+  v: 1;
+  createdAt: string;
+  model: string;
+  variant: string;
+  tasks: EvalTask[];
+  provenance?: RunProvenance;
+};
 export function readManifest(dir: string): RunManifest {
   return JSON.parse(readFileSync(join(dir, 'run.json'), 'utf8')) as RunManifest;
 }
@@ -37,22 +53,47 @@ export type EvalOptions = {
   repeat?: number;
   concurrency?: number;
   promptsDir?: string;
+  evaluatorPromptsDir?: string;
   providerFactory?: (task: EvalTask, attempt: number) => Provider;
+  onModelCall?: (kind: 'actor' | 'judge', task: EvalTask, attempt: number) => void;
+  onModelResult?: (kind: 'actor' | 'judge', task: EvalTask, attempt: number, message: AssistantMessage) => void;
   signal?: AbortSignal;
   onAttempt?: (r: AttemptResult) => void;
 };
 export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
   const tasks = loadTasks(opts.tasksDir, { pattern: opts.pattern, split: opts.split }),
     dir = resolve(opts.runDir),
-    variant = opts.promptsDir ? basename(resolve(opts.promptsDir)) : 'default';
+    variant = opts.promptsDir ? basename(resolve(opts.promptsDir)) : 'default',
+    repeat = opts.repeat ?? 1,
+    concurrency = opts.concurrency ?? 1;
   if (!tasks.length) throw new Error('No evaluation tasks matched.');
+  if (!Number.isInteger(repeat) || repeat < 1 || !Number.isInteger(concurrency) || concurrency < 1)
+    throw new Error('Evaluation repeat and concurrency must be positive integers.');
   await mkdir(dir, { recursive: true });
   writeFileSync(join(dir, 'results.jsonl'), '', { flag: 'wx' });
   await cp(opts.promptsDir ?? opts.config.promptsDir ?? defaultPromptsDir, join(dir, 'prompts'), { recursive: true });
-  const manifest: RunManifest = { v: 1, createdAt: new Date().toISOString(), model: opts.config.model, variant, tasks };
+  const evaluatorTemplate = loadPrompts(opts.evaluatorPromptsDir ?? opts.config.promptsDir ?? defaultPromptsDir).judge;
+  await mkdir(join(dir, 'evaluator'));
+  writeFileSync(join(dir, 'evaluator', 'judge.md'), evaluatorTemplate);
+  const model = resolveModel(opts.config.model, opts.config.models, opts.config.provider);
+  const manifest: RunManifest = {
+    v: 1,
+    createdAt: new Date().toISOString(),
+    model: model.id,
+    variant,
+    tasks,
+    provenance: createProvenance({
+      tasks,
+      tasksDir: opts.tasksDir,
+      evaluatorTemplate,
+      config: opts.config,
+      model,
+      repeat,
+      concurrency,
+    }),
+  };
   writeFileSync(join(dir, 'run.json'), JSON.stringify(manifest, null, 2) + '\n');
-  const model = resolveModel(opts.config.model, opts.config.models, opts.config.provider),
-    jobs = tasks.flatMap((task) => Array.from({ length: opts.repeat ?? 1 }, (_, i) => ({ task, attempt: i + 1 }))),
+  const jobs = tasks.flatMap((task) => Array.from({ length: repeat }, (_, i) => ({ task, attempt: i + 1 }))),
     results: AttemptResult[] = [];
   let next = 0;
   async function attempt(task: EvalTask, n: number): Promise<AttemptResult> {
@@ -60,6 +101,8 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       workspace = join(dir, 'workspaces', task.id, String(n)),
       home = join(dir, 'homes', task.id, String(n)),
       env = { MH_HOME: home };
+    const modelCalls = { actor: 0, judge: 0 },
+      modelUsage = { actor: zeroUsage(), judge: zeroUsage() };
     const result: AttemptResult = {
       taskId: task.id,
       attempt: n,
@@ -73,6 +116,8 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       toolErrors: 0,
       endReason: 'error',
       sessionPath: '',
+      modelCalls,
+      modelUsage,
     };
     try {
       opts.signal?.throwIfAborted();
@@ -114,11 +159,52 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
           return result;
         }
       }
+      let protectedFiles: Record<string, string>;
+      try {
+        protectedFiles = snapshotProtectedFiles(workspace, task.protectedFiles ?? []);
+      } catch (error) {
+        result.integrityError = `Cannot snapshot protected evaluation files: ${error instanceof Error ? error.message : String(error)}`;
+        throw new Error(result.integrityError);
+      }
+      const verifyIntegrity = () => {
+        const error = protectedFilesError(workspace, protectedFiles);
+        if (error) {
+          result.integrityError = error;
+          throw new Error(error);
+        }
+      };
       const session = createSession(home, workspace);
       result.sessionPath = session.dir;
-      const provider =
+      const upstream =
         opts.providerFactory?.(task, n) ??
         (model.provider === 'anthropic' ? new AnthropicProvider() : new OpenAIProvider());
+      const snapshots = join(dir, 'snapshots', task.id, String(n));
+      await mkdir(snapshots, { recursive: true });
+      result.requestSnapshotsPath = join(snapshots, 'requests.jsonl');
+      writeFileSync(result.requestSnapshotsPath, '', { flag: 'wx' });
+      const trackedProvider = (kind: 'actor' | 'judge'): Provider => ({
+        id: upstream.id,
+        async stream(request, signal, emit) {
+          opts.onModelCall?.(kind, task, n);
+          modelCalls[kind]++;
+          const snapshot = {
+            kind,
+            call: modelCalls[kind],
+            provider: upstream.id,
+            model: request.model,
+            system: request.system,
+            tools: request.tools,
+            thinking: request.thinking,
+            maxOutputTokens: request.maxOutputTokens ?? request.model.maxOutputTokens,
+            hash: hashText(stableJson({ system: request.system, tools: request.tools })),
+          };
+          appendFileSync(result.requestSnapshotsPath!, JSON.stringify(sanitizeForArtifact(snapshot)) + '\n');
+          const message = await upstream.stream(request, signal, emit);
+          modelUsage[kind] = addUsage(modelUsage[kind], message.usage);
+          opts.onModelResult?.(kind, task, n, message);
+          return message;
+        },
+      });
       const run = await startRun({
         cwd: workspace,
         home,
@@ -126,7 +212,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
         config: { ...opts.config, promptsDir: join(dir, 'prompts') },
         prompt: task.prompt,
         maxTurns: task.maxTurns ?? 30,
-        provider,
+        provider: trackedProvider('actor'),
         signal: opts.signal,
       });
       const trace = summarizeTrace(session.entries());
@@ -135,6 +221,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       result.toolCalls = trace.toolCalls;
       result.toolErrors = trace.toolErrors;
       result.endReason = run.reason;
+      verifyIntegrity();
       const check = await runCommand(task.check.command, {
         cwd: workspace,
         timeoutSec: task.check.timeoutSec ?? 120,
@@ -147,13 +234,14 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
         (check.timedOut ? '\n[timed out]' : '') +
         (check.aborted ? '\n[aborted]' : '')
       ).slice(-3000);
+      verifyIntegrity();
       result.status = check.exitCode === 0 && !check.timedOut && !check.aborted ? 'pass' : 'fail';
       if (task.judge) {
         const diff = await runCommand('git diff HEAD --', { cwd: workspace, timeoutSec: 30, signal: opts.signal, env });
         const judged = await runJudge({
-          provider,
+          provider: trackedProvider('judge'),
           model,
-          template: loadPrompts(join(dir, 'prompts')).judge,
+          template: evaluatorTemplate,
           prompt: task.prompt,
           rubric: task.judge.rubric,
           diff: diff.output,
@@ -161,6 +249,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
           signal: opts.signal ?? new AbortController().signal,
         });
         result.judge = judged.verdict;
+        result.judgeResponse = judged.response;
         result.usage = addUsage(result.usage, judged.usage);
         if ('error' in judged.verdict || !judged.verdict.pass) result.status = 'fail';
         session.append({
@@ -169,13 +258,14 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
           data: { kind: 'judge', usage: judged.usage, ...(judged.cache ? { cache: judged.cache } : {}) },
         });
       }
-      const amount = cost(result.usage, model);
-      if (amount !== undefined) result.cost = amount;
     } catch (error) {
       result.status = 'harnessError';
       result.checkOutputTail = error instanceof Error ? error.message : String(error);
     } finally {
       result.durationMs = Date.now() - started;
+      result.usage = addUsage(modelUsage.actor, modelUsage.judge);
+      const amount = cost(result.usage, model);
+      if (amount !== undefined) result.cost = amount;
     }
     return result;
   }
@@ -190,7 +280,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       opts.onAttempt?.(r);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(opts.concurrency ?? 1, jobs.length) }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, () => worker()));
   results.sort((a, b) => a.taskId.localeCompare(b.taskId) || a.attempt - b.attempt);
   writeFileSync(join(dir, 'summary.md'), renderSummary(results, tasks));
   return results;

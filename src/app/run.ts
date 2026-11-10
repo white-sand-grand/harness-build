@@ -21,6 +21,9 @@ export type StartRunOptions = {
   toolsFilter?: string[];
   systemOverride?: string;
   writeRoots?: string[];
+  strictReadRoots?: string[];
+  strictWritePaths?: string[];
+  includeProjectInstructions?: boolean;
   maxTurns?: number;
   getSteering?: () => Message[];
 };

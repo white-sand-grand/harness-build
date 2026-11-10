@@ -1,1 +1,2 @@
 evals/tasks/crlf-edit/files/settings.cjs text eol=crlf
+docs/reports/evidence/*-system.txt text eol=lf

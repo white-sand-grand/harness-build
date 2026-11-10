@@ -3,5 +3,6 @@
   "split": "heldout",
   "prompt": "Migrate config.json from v1 to v2. Set version to 2; move host/port into server, retries into retry.maxAttempts, and theme into ui.theme. Preserve all original values and remove the old top-level fields. Run tests.",
   "check": { "command": "node --test" },
+  "protectedFiles": ["config.test.cjs"],
   "tags": ["json"]
 }

@@ -228,7 +228,7 @@ test('only dev failures are included', async () =>
   withTmpDir(async (d) => {
     await task(d, 'a', { check: { command: 'node -e "process.exit(1)"' } });
     await task(d, 'b', { split: 'heldout', check: { command: 'node -e "process.exit(1)"' } });
-    await runEval(options(d));
+    await runEval({ ...options(d), repeat: 2 });
     const p = scripted(
       (req) => {
         const text = req.messages[0]!.content.find((b) => b.type === 'text');
@@ -255,12 +255,26 @@ test('only dev failures are included', async () =>
 test('output written to variants dir, default prompts untouched', async () =>
   withTmpDir(async (d) => {
     await task(d, 'a', { check: { command: 'node -e "process.exit(1)"' } });
-    await runEval(options(d));
+    await runEval({ ...options(d), repeat: 2 });
     const before = await readFile(join(defaultPromptsDir, 'system.md'), 'utf8');
     const p = scripted(
       {
         toolCalls: [
           { name: 'write', args: { path: 'analysis.md', content: 'proposal' } },
+          {
+            name: 'write',
+            args: {
+              path: 'proposal.json',
+              content: JSON.stringify({
+                hypothesis: 'Repeated missing guidance.',
+                targetFile: 'system.md',
+                category: 'prompt',
+                evidenceRefs: ['a#1:check', 'a#2:check'],
+                expectedImprovement: 'Verify changes.',
+                regressionRisk: 'Extra checks.',
+              }),
+            },
+          },
           { name: 'write', args: { path: 'prompts/system.md', content: 'improved' } },
         ],
       },

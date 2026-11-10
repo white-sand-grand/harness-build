@@ -10,6 +10,8 @@ import { readFileSync } from 'node:fs';
 import { runEval } from '../eval/runner.ts';
 import { compareRuns, renderComparison } from '../eval/compare.ts';
 import { analyzeRun } from '../eval/analyze.ts';
+import { runEvolution, renderEvolution } from '../eval/evolve.ts';
+import type { PromptTarget } from '../eval/candidate.ts';
 import { summarizeTrace } from '../eval/report.ts';
 import { openSession } from '../session/index.ts';
 import { sessionId } from '../util/ids.ts';
@@ -23,6 +25,44 @@ export async function handleCommand(
     const trace = summarizeTrace(openSession(opts.home, opts.cwd, rest[0] ?? 'latest').entries());
     console.log(JSON.stringify({ ...trace, cost: trace.cost ?? 'n/a' }, null, v.json ? undefined : 2));
     return 0;
+  }
+  if (command === 'evolve') {
+    const controller = new AbortController(),
+      abort = () => controller.abort();
+    process.on('SIGINT', abort);
+    try {
+      const result = await runEvolution({
+        tasksDir: fileURLToPath(new URL('../../evals/tasks/', import.meta.url)),
+        outputDir: resolve(v.output ?? join(opts.cwd, 'evals', 'runs', sessionId() + '-evolution')),
+        config: opts.config,
+        optimizerConfig: {
+          ...opts.config,
+          model: v['optimizer-model'] ?? opts.config.model,
+          provider: (v['optimizer-provider'] ?? opts.config.provider) as Config['provider'],
+        },
+        promptsDir: v.variant ? resolve(v.variant) : undefined,
+        pattern: v.tasks,
+        repeat: v.repeat ? Number(v.repeat) : undefined,
+        concurrency: v.concurrency ? Number(v.concurrency) : undefined,
+        maxRounds: v.rounds ? Number(v.rounds) : undefined,
+        candidatesPerRound: v.candidates ? Number(v.candidates) : undefined,
+        targets: v.targets?.split(',') as PromptTarget[] | undefined,
+        optimizerMaxTurns: v['max-turns'] ? Number(v['max-turns']) : undefined,
+        limits: {
+          ...(v['max-calls'] ? { maxModelCalls: Number(v['max-calls']) } : {}),
+          ...(v['max-tokens'] ? { maxTokens: Number(v['max-tokens']) } : {}),
+          ...(v.timeout ? { maxDurationSec: Number(v.timeout) } : {}),
+        },
+        signal: controller.signal,
+        onProgress: v.json ? undefined : (message) => console.error(message),
+      });
+      console.log(
+        v.json ? JSON.stringify(result) : renderEvolution(result) + '\nReport: ' + join(result.outputDir, 'report.md'),
+      );
+      return result.stopReason === 'aborted' ? 130 : result.decision === 'inconclusive' ? 1 : 0;
+    } finally {
+      process.removeListener('SIGINT', abort);
+    }
   }
   if (command === 'eval') {
     if (rest[0] === 'compare' && rest[1] && rest[2]) {
@@ -79,9 +119,16 @@ export async function handleCommand(
     console.log(
       v.json
         ? JSON.stringify(r)
-        : `${r.analysis}\nVariant: ${r.variantDir}\nNext: mh eval run --variant "${r.variantDir}" --split all\nThen: mh eval compare "${resolve(rest[0])}" <new-run>`,
+        : `Analyze: ${r.reason}\n${r.analysis}\nVariant: ${r.variantDir}\n` +
+            (r.validation.valid
+              ? `Next: mh eval run --variant "${r.variantDir}" --split all\nThen: mh eval compare "${resolve(rest[0])}" <new-run>`
+              : `No candidate is ready for adoption.\n${r.validation.errors.join('\n')}`),
     );
-    return 0;
+    return r.reason === 'aborted'
+      ? 130
+      : r.validation.valid || ['noChange', 'insufficientEvidence'].includes(r.reason)
+        ? 0
+        : 1;
   }
   if (command === 'memory') {
     const dir = memoryDir(opts.home, opts.cwd);

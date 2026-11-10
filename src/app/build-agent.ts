@@ -71,7 +71,7 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
       date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     system = assembleSystemPrompt({
       base: opts.systemOverride ?? prompts.system,
-      instructions: collectInstructions(opts.home, opts.cwd),
+      instructions: opts.includeProjectInstructions === false ? [] : collectInstructions(opts.home, opts.cwd),
       memory: memory
         ? renderTemplate(prompts.fragments.memory, { memoryDir: memory, memoryIndex: readIndex(memory).text })
         : undefined,
@@ -118,6 +118,8 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           ask: opts.ask,
           extraPatterns: config.permissions.extraRiskyPatterns.map((p) => new RegExp(p, 'i')),
           strictWriteRoots: opts.writeRoots,
+          strictReadRoots: opts.strictReadRoots,
+          strictWritePaths: opts.strictWritePaths,
           approvals: sessionApprovals.get(session),
         }),
         afterEditHook({

@@ -4,5 +4,6 @@
   "prompt": "Find the unique ERROR line in server.log and write the exact line to answer.txt. The log has 50,000 lines; use a targeted search. Verify with node check.cjs.",
   "setup": "node setup.cjs",
   "check": { "command": "node check.cjs" },
+  "protectedFiles": ["check.cjs", "setup.cjs", "server.log"],
   "tags": ["search", "context"]
 }

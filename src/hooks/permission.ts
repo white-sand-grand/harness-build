@@ -1,7 +1,21 @@
-import { dirname } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { lstatSync } from 'node:fs';
 import type { Hooks } from '../agent/index.ts';
 import { realPath, isWithin, resolvePath } from '../util/paths.ts';
 export type Asker = (q: { title: string; detail: string }) => Promise<'once' | 'session' | 'deny'>;
+function hasSymlink(path: string): boolean {
+  let current = resolve(path);
+  while (true) {
+    try {
+      if (lstatSync(current).isSymbolicLink()) return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return true;
+    }
+    const parent = dirname(current);
+    if (parent === current) return false;
+    current = parent;
+  }
+}
 export function riskyCategory(command: string, extra: RegExp[] = []): string | undefined {
   const rm = command.match(/\brm\s+([^;|\n]*)/i)?.[1] ?? '';
   if (
@@ -47,16 +61,39 @@ export function permissionHook(opts: {
   ask?: Asker;
   extraPatterns: RegExp[];
   strictWriteRoots?: string[];
+  strictReadRoots?: string[];
+  strictWritePaths?: string[];
   approvals?: Set<string>;
 }): Hooks {
   const approved = opts.approvals ?? new Set<string>();
   return {
     async beforeTool(call, tool) {
+      if (call.name === 'read' && opts.strictReadRoots) {
+        const path = resolvePath(opts.cwd ?? opts.root, String(call.args.path));
+        if (hasSymlink(path) || !opts.strictReadRoots.some((root) => isWithin(realPath(root), realPath(path))))
+          return {
+            action: 'deny',
+            reason: 'Blocked: reads are restricted to the supplied evidence and prompts; symlinks are not allowed.',
+          };
+      }
       if (tool.readOnly) return { action: 'allow' };
       let category: string | undefined,
         detail = '';
       if (call.name === 'write' || call.name === 'edit') {
-        const target = realPath(resolvePath(opts.cwd ?? opts.root, String(call.args.path)));
+        const path = resolvePath(opts.cwd ?? opts.root, String(call.args.path));
+        const target = realPath(path);
+        if (
+          opts.strictWritePaths &&
+          (hasSymlink(path) ||
+            !opts.strictWritePaths.some(
+              (allowed) => isWithin(realPath(allowed), target) && isWithin(target, realPath(allowed)),
+            ))
+        )
+          return {
+            action: 'deny',
+            reason:
+              'Blocked: only the selected prompt and proposal output files may be written; symlinks are not allowed.',
+          };
         if (
           opts.strictWriteRoots &&
           (!opts.strictWriteRoots.some((root) => isWithin(realPath(root), target)) ||

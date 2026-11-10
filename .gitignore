@@ -10,6 +10,9 @@ evals/variants/
 session.jsonl
 offload/
 dream-input/
+# Temporary manual API probes; curated evidence belongs in docs/reports/
+/test/live/.*-probe.ts
+/test/live/.scratch/
 
 # Local credentials and logs; keep shareable environment examples
 .env
