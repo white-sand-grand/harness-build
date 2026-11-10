@@ -10,6 +10,9 @@ import { parseCLI, help } from './args.ts';
 import { renderJSON } from './render.ts';
 import { runREPL } from './repl.ts';
 import { handleCommand } from './commands.ts';
+import { createRuntime, type RuntimeManager } from '../app/runtime.ts';
+import type { Asker } from '../hooks/permission.ts';
+import { createAsker } from './ask.ts';
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   let args: ReturnType<typeof parseCLI>;
   try {
@@ -34,6 +37,11 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (v.model) overrides.model = v.model;
   if (v.thinking) overrides.thinking = v.thinking as Config['thinking'];
   if (v.prompts) overrides.promptsDir = resolve(v.prompts);
+  if (v.profile !== undefined || v.watch !== undefined)
+    overrides.runtime = {
+      ...(v.profile !== undefined ? { profile: v.profile } : {}),
+      ...(v.watch !== undefined ? { watch: v.watch } : {}),
+    };
   if (v.yolo) overrides.permissions = { mode: 'yolo', extraRiskyPatterns: [] };
   let trustProject = v['trust-project'];
   if (!trustProject && process.stdin.isTTY) {
@@ -52,76 +60,118 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   }
   const config = loadConfig({ home, cwd, overrides, trustProject, warn: (s) => console.error(s) });
   const command = args.positionals[0];
-  const commandExit = await handleCommand(args, { cwd, home, config });
-  if (commandExit !== undefined) return commandExit;
-  if (command === 'sessions') {
-    const sessions = listSessions(home, cwd);
-    console.log(v.json ? JSON.stringify(sessions) : sessions.map((s) => `${s.id}  ${s.firstUserText}`).join('\n'));
-    return 0;
-  }
-  const session = v.resume
-    ? openSession(home, cwd, v.resume)
-    : v.continue
-      ? openSession(home, cwd, 'latest')
-      : undefined;
-  const lastModel = session
-    ?.entries()
-    .findLast((e) => e.type === 'modelChange' || (e.type === 'message' && e.message.role === 'assistant'));
-  const previous =
-    lastModel?.type === 'modelChange'
-      ? lastModel
-      : lastModel?.type === 'message' && lastModel.message.role === 'assistant'
-        ? lastModel.message
-        : undefined;
-  if (previous) {
-    if (!v.provider) config.provider = previous.provider;
-    if (!v.model && !v.provider) config.model = previous.model;
-  }
-  let prompt = args.positionals.join(' ');
-  if (!v.print && !v.json && process.stdin.isTTY) {
-    await runREPL(
-      { cwd, home, config, session, maxTurns: v['max-turns'] ? Number(v['max-turns']) : undefined },
-      prompt,
-      v['hide-thinking'],
-    );
-    return 0;
-  }
-  if (!prompt && !process.stdin.isTTY) {
-    for await (const chunk of process.stdin) prompt += String(chunk);
-  }
-  if (!prompt.trim()) {
-    console.error('A prompt is required in print mode.\n' + help);
-    return 2;
-  }
-  const controller = new AbortController(),
-    interrupt = () => controller.abort();
-  process.on('SIGINT', interrupt);
-  const entryStart = session?.entries().length ?? 0;
-  try {
-    const result = await startRun({
+  let runtime: RuntimeManager | undefined;
+  let runtimeAsk: Asker | undefined = process.stdin.isTTY
+    ? async (question) => {
+        const rl = createInterface({ input: process.stdin, output: process.stderr });
+        try {
+          return await createAsker(rl)(question);
+        } finally {
+          rl.close();
+        }
+      }
+    : undefined;
+  const initializeRuntime = async () => {
+    runtime = await createRuntime({
       cwd,
       home,
       config,
-      session,
-      prompt,
-      signal: controller.signal,
-      maxTurns: v['max-turns'] ? Number(v['max-turns']) : 50,
-      onEvent: (e) => {
-        if (v.json) process.stdout.write(renderJSON(e) + '\n');
-        else if (e.type === 'agentEnd' && e.error) console.error(e.error);
-      },
+      readConfig: () => loadConfig({ home, cwd, overrides, warn: (s) => console.error(s) }),
+      ask: (question) => runtimeAsk?.(question) ?? Promise.resolve('deny'),
+      trustPlugins: v['trust-project'],
+      onDiagnostic: (message) => console.error(message),
     });
-    if (!v.json && result.finalText) console.log(result.finalText);
-    if (
-      result.session
-        .entries()
-        .slice(entryStart)
-        .some((e) => e.type === 'trace' && e.name === 'hook' && e.data.exhausted)
-    )
-      console.error('检查仍失败：stop-check 已达到自动继续次数上限。');
-    return result.reason === 'done' ? 0 : result.reason === 'aborted' ? 130 : 1;
+  };
+  try {
+    const runtimeCommand =
+      ['plugins', 'evolve'].includes(command ?? '') || (command === 'eval' && args.positionals[1] === 'run');
+    if (runtimeCommand && (config.runtime || command === 'plugins')) await initializeRuntime();
+    const commandExit = await handleCommand(args, { cwd, home, config, runtime });
+    if (commandExit !== undefined) return commandExit;
+    if (command === 'sessions') {
+      const sessions = listSessions(home, cwd);
+      console.log(v.json ? JSON.stringify(sessions) : sessions.map((s) => `${s.id}  ${s.firstUserText}`).join('\n'));
+      return 0;
+    }
+    const session = v.resume
+      ? openSession(home, cwd, v.resume)
+      : v.continue
+        ? openSession(home, cwd, 'latest')
+        : undefined;
+    const lastModel = session
+      ?.entries()
+      .findLast((e) => e.type === 'modelChange' || (e.type === 'message' && e.message.role === 'assistant'));
+    const previous =
+      lastModel?.type === 'modelChange'
+        ? lastModel
+        : lastModel?.type === 'message' && lastModel.message.role === 'assistant'
+          ? lastModel.message
+          : undefined;
+    if (previous) {
+      if (!v.provider) config.provider = previous.provider;
+      if (!v.model && !v.provider) config.model = previous.model;
+    }
+    let prompt = args.positionals.join(' ');
+    if (!v.print && !v.json && process.stdin.isTTY) {
+      if (config.runtime && !runtime) await initializeRuntime();
+      await runREPL(
+        {
+          cwd,
+          home,
+          config,
+          session,
+          runtime,
+          onAsker: (ask) => {
+            runtimeAsk = ask;
+          },
+          maxTurns: v['max-turns'] ? Number(v['max-turns']) : undefined,
+        },
+        prompt,
+        v['hide-thinking'],
+      );
+      return 0;
+    }
+    if (!prompt && !process.stdin.isTTY) {
+      for await (const chunk of process.stdin) prompt += String(chunk);
+    }
+    if (!prompt.trim()) {
+      console.error('A prompt is required in print mode.\n' + help);
+      return 2;
+    }
+    if (config.runtime && !runtime) await initializeRuntime();
+    const controller = new AbortController(),
+      interrupt = () => controller.abort();
+    process.on('SIGINT', interrupt);
+    const entryStart = session?.entries().length ?? 0;
+    try {
+      const result = await startRun({
+        cwd,
+        home,
+        config,
+        runtime,
+        session,
+        prompt,
+        signal: controller.signal,
+        maxTurns: v['max-turns'] ? Number(v['max-turns']) : 50,
+        onEvent: (e) => {
+          if (v.json) process.stdout.write(renderJSON(e) + '\n');
+          else if (e.type === 'agentEnd' && e.error) console.error(e.error);
+        },
+      });
+      if (!v.json && result.finalText) console.log(result.finalText);
+      if (
+        result.session
+          .entries()
+          .slice(entryStart)
+          .some((e) => e.type === 'trace' && e.name === 'hook' && e.data.exhausted)
+      )
+        console.error('检查仍失败：stop-check 已达到自动继续次数上限。');
+      return result.reason === 'done' ? 0 : result.reason === 'aborted' ? 130 : 1;
+    } finally {
+      process.removeListener('SIGINT', interrupt);
+    }
   } finally {
-    process.removeListener('SIGINT', interrupt);
+    await runtime?.close();
   }
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

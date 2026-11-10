@@ -52,11 +52,19 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       );
     }
   }
-  const request = () =>
-    cfg.provider.stream(
+  const request = async () => {
+    let context: string | undefined;
+    try {
+      context = (await cfg.hooks.modelContext?.(messages))?.trim();
+    } catch (error) {
+      if (opts.signal.aborted) return undefined;
+      throw error;
+    }
+    if (opts.signal.aborted) return undefined;
+    return cfg.provider.stream(
       {
         model: cfg.model,
-        system: cfg.system,
+        system: context ? `${cfg.system}\n\n${context}` : cfg.system,
         systemCacheBoundary: cfg.systemCacheBoundary,
         messages,
         tools: cfg.tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
@@ -65,6 +73,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       opts.signal,
       (event) => emit({ type: 'stream', event }),
     );
+  };
   let lastUsage: AssistantMessage['usage'] | undefined;
   let turn = 0;
   let retriedOverflow = false;
@@ -76,12 +85,14 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
     const replacement = await cfg.hooks.beforeModel?.(messages, { lastUsage });
     if (replacement) replace(replacement);
     let assistant = await request();
+    if (!assistant) return end('aborted');
     if (assistant.stopReason === 'error' && isContextOverflow(assistant.errorMessage) && !retriedOverflow) {
       retriedOverflow = true;
       const forced = await cfg.hooks.beforeModel?.(messages, { lastUsage, force: true });
       if (forced) {
         replace(forced);
         assistant = await request();
+        if (!assistant) return end('aborted');
       }
     }
     lastUsage = assistant.usage;

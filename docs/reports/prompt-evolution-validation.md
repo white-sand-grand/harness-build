@@ -121,4 +121,4 @@ WSL 的 `pnpm check` 通过类型、分层、格式、288 项离线测试与构�
 
 受控修复验证了“失败证据 → 修改提示词 → 实际执行 → 重新确认 → 独立审计”的工程流程。它不证明超过正常提示词的表现，也不证明一般编码任务的广泛提升。8 个种子任务、每题两次重复适合机制验收和开发回归；更强的泛化结论需要更多未参与开发的任务与重复实验。
 
-教程与源码入口：[第九章](../learn/09-prompt-evolution.md)、[设计说明](../prompt-evolution-design.md)、[实施记录](../prompt-evolution-plan.md)、[真实测试](../../test/live/evolution.test.ts)。
+教程与源码入口：[提示词进化与采用](../learn/11-prompt-evolution.md)、[设计说明](../prompt-evolution-design.md)、[验证协议](../prompt-evolution-plan.md)、[真实测试](../../test/live/evolution.test.ts)。

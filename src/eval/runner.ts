@@ -7,6 +7,8 @@ import { createSession } from '../session/index.ts';
 import { startRun } from '../app/run.ts';
 import { defaultPromptsDir, loadPrompts } from '../app/prompts.ts';
 import type { Config } from '../app/config.ts';
+import { snapshotConfigForRun, type RuntimeSnapshot } from '../app/runtime.ts';
+import { writePromptSelection } from '../app/prompt-selection.ts';
 import { runCommand } from '../util/process.ts';
 import { spawnSync } from 'node:child_process';
 import { loadTasks, type EvalTask, type AttemptResult } from './task.ts';
@@ -48,6 +50,7 @@ export type EvalOptions = {
   tasksDir: string;
   runDir: string;
   config: Config;
+  runtimeSnapshot?: RuntimeSnapshot;
   split?: 'dev' | 'heldout' | 'all';
   pattern?: string;
   repeat?: number;
@@ -61,6 +64,19 @@ export type EvalOptions = {
   onAttempt?: (r: AttemptResult) => void;
 };
 export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
+  if (opts.config.runtime && !opts.runtimeSnapshot)
+    throw new Error('Runtime evaluation requires a frozen runtimeSnapshot.');
+  if (opts.runtimeSnapshot)
+    opts = {
+      ...opts,
+      config: {
+        ...opts.runtimeSnapshot.config,
+        model: opts.config.model,
+        provider: opts.config.provider,
+        models: opts.config.models,
+        thinking: opts.config.thinking,
+      },
+    };
   const tasks = loadTasks(opts.tasksDir, { pattern: opts.pattern, split: opts.split }),
     dir = resolve(opts.runDir),
     variant = opts.promptsDir ? basename(resolve(opts.promptsDir)) : 'default',
@@ -71,8 +87,13 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
     throw new Error('Evaluation repeat and concurrency must be positive integers.');
   await mkdir(dir, { recursive: true });
   writeFileSync(join(dir, 'results.jsonl'), '', { flag: 'wx' });
-  await cp(opts.promptsDir ?? opts.config.promptsDir ?? defaultPromptsDir, join(dir, 'prompts'), { recursive: true });
-  const evaluatorTemplate = loadPrompts(opts.evaluatorPromptsDir ?? opts.config.promptsDir ?? defaultPromptsDir).judge;
+  if (opts.runtimeSnapshot && !opts.promptsDir)
+    writePromptSelection(opts.runtimeSnapshot.prompts, join(dir, 'prompts'));
+  else
+    await cp(opts.promptsDir ?? opts.config.promptsDir ?? defaultPromptsDir, join(dir, 'prompts'), { recursive: true });
+  const evaluatorTemplate = opts.evaluatorPromptsDir
+    ? loadPrompts(opts.evaluatorPromptsDir).judge
+    : (opts.runtimeSnapshot?.prompts.judge ?? loadPrompts(opts.config.promptsDir ?? defaultPromptsDir).judge);
   await mkdir(join(dir, 'evaluator'));
   writeFileSync(join(dir, 'evaluator', 'judge.md'), evaluatorTemplate);
   const model = resolveModel(opts.config.model, opts.config.models, opts.config.provider);
@@ -90,6 +111,7 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       model,
       repeat,
       concurrency,
+      runtimeSnapshot: opts.runtimeSnapshot,
     }),
   };
   writeFileSync(join(dir, 'run.json'), JSON.stringify(manifest, null, 2) + '\n');
@@ -209,11 +231,20 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
         cwd: workspace,
         home,
         session,
-        config: { ...opts.config, promptsDir: join(dir, 'prompts') },
+        config: opts.runtimeSnapshot
+          ? {
+              ...snapshotConfigForRun(opts.runtimeSnapshot, join(dir, 'prompts')),
+              model: opts.config.model,
+              provider: opts.config.provider,
+              models: opts.config.models,
+              thinking: opts.config.thinking,
+            }
+          : { ...opts.config, promptsDir: join(dir, 'prompts') },
         prompt: task.prompt,
         maxTurns: task.maxTurns ?? 30,
         provider: trackedProvider('actor'),
         signal: opts.signal,
+        trustPlugins: !!opts.runtimeSnapshot,
       });
       const trace = summarizeTrace(session.entries());
       result.turns = run.turns;

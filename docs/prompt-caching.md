@@ -1,6 +1,6 @@
 # 提示缓存：稳定前缀、最终用量与网关排查
 
-[学习路线](learn/README.md) · [模型接口](learn/03-providers.md) · [上下文管理](learn/05-context.md) · [评测与指标](learn/08-evaluation.md)
+[学习路线](learn/README.md) · [模型接口](learn/03-providers.md) · [上下文管理](learn/05-context.md) · [评测与指标](learn/10-evaluation.md)
 
 这份指南沿着 mini-harness 的请求构造、流式解析和 trace，解释如何验证提示缓存。实现支持 GPT-6.1 Sol 的原生缓存参数，以及 Anthropic 兼容端点的缓存用量；每个模型和端点需要分别验收。
 

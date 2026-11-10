@@ -15,26 +15,40 @@ import type { PromptTarget } from '../eval/candidate.ts';
 import { summarizeTrace } from '../eval/report.ts';
 import { openSession } from '../session/index.ts';
 import { sessionId } from '../util/ids.ts';
+import type { RuntimeLease, RuntimeManager } from '../app/runtime.ts';
 export async function handleCommand(
   args: ReturnType<typeof parseCLI>,
-  opts: { cwd: string; home: string; config: Config },
+  opts: { cwd: string; home: string; config: Config; runtime?: RuntimeManager },
 ): Promise<number | undefined> {
   const [command, ...rest] = args.positionals,
     v = args.values;
+  if (command === 'plugins') {
+    console.log(
+      JSON.stringify(
+        opts.runtime?.status() ?? { profile: 'default', plugins: [], activeRuns: 0 },
+        null,
+        v.json ? undefined : 2,
+      ),
+    );
+    return 0;
+  }
   if (command === 'trace') {
     const trace = summarizeTrace(openSession(opts.home, opts.cwd, rest[0] ?? 'latest').entries());
     console.log(JSON.stringify({ ...trace, cost: trace.cost ?? 'n/a' }, null, v.json ? undefined : 2));
     return 0;
   }
   if (command === 'evolve') {
+    let lease: RuntimeLease | undefined;
     const controller = new AbortController(),
       abort = () => controller.abort();
     process.on('SIGINT', abort);
     try {
+      lease = await opts.runtime?.acquireRun();
       const result = await runEvolution({
         tasksDir: fileURLToPath(new URL('../../evals/tasks/', import.meta.url)),
         outputDir: resolve(v.output ?? join(opts.cwd, 'evals', 'runs', sessionId() + '-evolution')),
         config: opts.config,
+        runtimeSnapshot: lease?.snapshot,
         optimizerConfig: {
           ...opts.config,
           model: v['optimizer-model'] ?? opts.config.model,
@@ -62,6 +76,7 @@ export async function handleCommand(
       return result.stopReason === 'aborted' ? 130 : result.decision === 'inconclusive' ? 1 : 0;
     } finally {
       process.removeListener('SIGINT', abort);
+      await lease?.release();
     }
   }
   if (command === 'eval') {
@@ -74,6 +89,7 @@ export async function handleCommand(
       console.error('Usage: mh eval run [options] | mh eval compare <runA> <runB>');
       return 2;
     }
+    let lease: RuntimeLease | undefined;
     const runDir = resolve(
         v.output ??
           join(opts.cwd, 'evals', 'runs', sessionId() + '-' + (v.variant ? basename(resolve(v.variant)) : 'default')),
@@ -82,10 +98,12 @@ export async function handleCommand(
       abort = () => controller.abort();
     process.on('SIGINT', abort);
     try {
+      lease = await opts.runtime?.acquireRun();
       const results = await runEval({
         tasksDir: fileURLToPath(new URL('../../evals/tasks/', import.meta.url)),
         runDir,
         config: opts.config,
+        runtimeSnapshot: lease?.snapshot,
         promptsDir: v.variant ? resolve(v.variant) : undefined,
         pattern: v.tasks,
         split: (v.split as 'dev' | 'heldout' | 'all' | undefined) ?? 'all',
@@ -104,6 +122,7 @@ export async function handleCommand(
       return controller.signal.aborted ? 130 : results.every((r) => r.status === 'pass') ? 0 : 1;
     } finally {
       process.removeListener('SIGINT', abort);
+      await lease?.release();
     }
   }
   if (command === 'analyze') {

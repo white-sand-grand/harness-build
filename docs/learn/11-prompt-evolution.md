@@ -1,22 +1,24 @@
-# 09 · 让提示词根据任务证据迭代
+# 11 · 从任务证据到可采用的提示词版本
 
-[学习路线](README.md) · 上一章：[评测与改进](08-evaluation.md)
+[学习路线](README.md) · 上一章：[评测与改进](10-evaluation.md)
 
-上一章已经能比较两次运行。这一章把它接成有预算的循环：提出提示词修改，实际执行任务，保留通过验证的版本，再检查这些修改是否适用于另一组任务。
+自进化把执行、证据、候选、评测与版本管理接成闭环：提出受限修改，运行任务，独立判断，再让通过验证的版本进入下一次运行。生成器与采用规则由不同模块负责。
 
-先看一个真实例子。验收人为提供了一份 `ACK_ONLY` 系统提示词，要求模型只回复确认语、禁止调用工具。十次开发尝试因此全部失败。优化模型读到失败轨迹后，提出恢复文件检查、编辑和验证的通用指令。程序没有直接采用，而是先运行候选，再重新运行基线和候选，最后才检查 heldout。实际结果和限制见[真实验证报告](../reports/prompt-evolution-validation.md)。
+先看一个具体例子。受控 `ACK_ONLY` 系统提示要求只回复确认语、禁止调用工具；Step 的两次 dev 尝试正常结束但都没有完成修复。优化器读到失败后提出通用执行指令。候选在 dev、新一轮确认及 heldout 各通过 2/2，产物加载后的新任务也通过检查。结果验证这一缺陷下的完整流程，不等于默认 prompt 的性能提升，详见[真实验收报告](../reports/pluggable-runtime-validation.md)。
 
 这里真正学习的是可替换的提示词文本。模型权重、工具实现、任务答案和评分标准固定；生成模型说“更好了”也不能代替任务检查。
 
 ## 先固定哪些东西可以变化
 
-[candidate.ts](../../src/eval/candidate.ts) 定义允许优化的文件：`system.md` 和四个工具说明。一次提案只改其中一个，其他 prompt 内容必须与父版本一致。
+[candidate.ts](../../src/eval/candidate.ts) 定义允许优化的最大范围：`system.md` 和四个内置工具说明。[evolve.ts](../../src/eval/evolve.ts) 再按实际 profile 过滤：未启用 edit，就不能优化 edit 的说明。一次提案只改一个组件，其他 prompt 内容必须与父版本一致。
 
 以修改 `tools/edit.md` 为例，程序检查目标是否非空、长度是否超限、原有模板变量是否完整、是否偷偷改了 `judge.md`，还会拒绝符号链接和已经评测过的相同内容。Windows PowerShell 回退会覆盖 bash 描述，所以该模式不能把磁盘上的 `tools/bash.md` 当作有效优化目标。
 
 这一步把“只改一个组件”变成代码约束。如果生成器可以同时修改评分器，观察到的高分就无法说明任务能力发生了变化。
 
 ## 将失败变成可以核对的提案
+
+[PromptOptimizer](../../src/eval/optimizer.ts) 只约定候选生成：`id`、`version` 和 `propose`。默认 evidence 实现使用 analyzeRun，也可以由程序调用者替换；无论使用哪个生成器，后续验证和判优仍由 evolve 执行。运行插件在 app 层装配，优化器在 eval 层注册，避免运行层反向依赖评测层。
 
 [analyzeRun](../../src/eval/analyze.ts) 只准备开发数据：可分析的失败、最多两条成功对照，以及提示词副本。环境中断、准备故障和 judge 错误不会直接转成提示词补丁。模型只能读取明确暴露的输入，写入选中的目标、`analysis.md` 与 `proposal.json`。
 
@@ -62,7 +64,27 @@ flowchart TD
 
 错误流可能没有报告最终 token，所以“收到一个错误回复”不能解释为用量完整或费用为零。缺少可靠价格时费用保持未知。一次 provider 调用还可能包含 HTTP 重试，报告时需说明计数口径。
 
-[evolve.ts](../../src/eval/evolve.ts) 保存每轮父版本、候选和选择理由。候选重复、没有修改依据或持续无改善时停止；默认提示词始终由显式选择控制。
+[evolve.ts](../../src/eval/evolve.ts) 保存每轮父版本、候选和选择理由。候选重复、没有修改依据或持续无改善时停止；默认提示词始终由显式选择控制。没有新的可归因失败时，`insufficientEvidence` 可以停止继续搜索，但不否定已经通过确认和审计的候选；最终 decision 与停止原因分别解释。
+
+## 从推荐结果到运行版本
+
+`recommend` 和 `unchanged` 才生成 [prompt-artifact](../../src/eval/prompt-artifact.ts)：记录整体 hash、12 个基础 prompt 文件的逐项 SHA256、父 hash、优化器身份与相对目录。`recommend` 选择确认和审计通过的候选，`unchanged` 选择原基线。
+
+目标 profile 显式指定 `promptArtifact`，由 [prompt-selection](../../src/app/prompt-selection.ts) 核对文件与 hash，然后用第九章的 reload 激活。正在执行的 run 继续旧版本。hash 证明加载内容没有漂移，是否值得采用则来自独立评测证据；手写一个 decision 字段不能代替实验。
+
+这一刻闭环才完成：任务产生证据，证据产生候选，评测产出版本，runtime 将它用于新任务。项目默认提示词不会被优化器直接覆盖。
+
+## 先运行完整的离线闭环
+
+项目根目录，PowerShell 7 或 WSL Ubuntu bash：
+
+```sh
+node docs/learn/examples/evolution.ts
+```
+
+[示例](examples/evolution.ts)固定 actor 和 optimizer 的回复，实际使用独立工作区、受保护 Node 检查、analyze、候选校验、gate、新鲜确认和 heldout 审计。随后校验产物、reload，再发起新 run 检查采用的 prompt 和文件结果。所有文件位于临时目录，退出时清理，禁止网络请求。
+
+脚本化 actor 知道演示答案，所以它只证明这些模块正确连接。模型能否自行提出有效候选，需要前述真实验收；广泛能力提升仍需要更多独立任务。
 
 ## 运行与验证
 
@@ -82,7 +104,7 @@ node src/cli/main.ts evolve --provider anthropic --model step-5-preview --repeat
 
 结果目录中的 `report.md` 给出 `recommend`、`unchanged`、`reject` 或 `inconclusive`；候选提示词、原始记录和资源账本各自留存。`recommend` 表示这次实验符合采用规则，不会自动替换默认提示词。
 
-完整真实验收使用 [evolution.test.ts](../../test/live/evolution.test.ts)，包含正常基线和受控修复两部分，需要显式开启 `MH_LIVE_EVOLUTION=1`。Step 与 Kimi 的协议、模型和复跑方法见[验证报告](../reports/prompt-evolution-validation.md)，各模型使用独立记录。
+提示词子系统的真实验收使用 [evolution.test.ts](../../test/live/evolution.test.ts)，包含正常基线和受控修复，需要显式开启 `MH_LIVE_EVOLUTION=1`。冻结 runtime、发布产物并在采用后发起新任务的真实验收使用 [runtime-evolution.test.ts](../../test/live/runtime-evolution.test.ts)，门控为 `MH_LIVE_RUNTIME_EVOLUTION=1`。两者都需要按脚本配置模型、端点、临时凭据与独立输出目录；实际结果分别见[提示词报告](../reports/prompt-evolution-validation.md)与[版本采用报告](../reports/pluggable-runtime-validation.md)，不同模型和实验不合并分数。
 
 源码阅读顺序：[candidate.ts](../../src/eval/candidate.ts) → [analyze.ts](../../src/eval/analyze.ts) → [gate.ts](../../src/eval/gate.ts) → [evolution-budget.ts](../../src/eval/evolution-budget.ts) → [evolve.ts](../../src/eval/evolve.ts)。算法来源与取舍见[设计说明](../prompt-evolution-design.md)。
 

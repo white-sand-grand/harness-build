@@ -18,15 +18,17 @@ import { mkdirSync } from 'node:fs';
 import { memoryDir, readIndex } from '../memory/memory-dir.ts';
 import { renderTemplate } from './prompts.ts';
 import type { StartRunOptions } from './run.ts';
-const frozen = new WeakMap<SessionStore, string>();
+const frozen = new WeakMap<SessionStore, { key: string; system: string }>();
 const sessionApprovals = new WeakMap<SessionStore, Set<string>>();
 export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentConfig {
   if (!sessionApprovals.has(session)) sessionApprovals.set(session, new Set());
   const config = opts.config,
     model = resolveModel(config.model, config.models, config.provider),
-    prompts = loadPrompts(config.promptsDir),
+    prompts = opts.runtimeSnapshot?.prompts ?? loadPrompts(config.promptsDir),
     shell = detectShell();
-  const memory = opts.systemOverride ? undefined : memoryDir(opts.home, opts.cwd);
+  const runtime = opts.runtimeSnapshot;
+  const usesFiles = !runtime || runtime.profile.memory.some((id) => ['file-index', 'file-recall'].includes(id));
+  const memory = opts.systemOverride || !usesFiles ? undefined : memoryDir(opts.home, opts.cwd);
   if (memory) mkdirSync(memory, { recursive: true });
   let tools = createDefaultTools(prompts.tools);
   if (shell.kind === 'powershell')
@@ -38,6 +40,10 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           )
         : t,
     );
+  if (runtime) {
+    const available = [...tools, ...runtime.tools];
+    tools = runtime.profile.tools.map((name) => available.find((tool) => tool.name === name)!);
+  }
   if (opts.toolsFilter) tools = tools.filter((t) => opts.toolsFilter!.includes(t.name));
   if (!model.supportsImages)
     tools = tools.map((t) =>
@@ -61,7 +67,8 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           }
         : t,
     );
-  let system = frozen.get(session);
+  const key = JSON.stringify([runtime?.id ?? 'default', opts.systemOverride, opts.includeProjectInstructions]);
+  let system = frozen.get(session)?.key === key ? frozen.get(session)!.system : undefined;
   if (!system) {
     const branch = spawnSync('git', ['-C', opts.cwd, 'branch', '--show-current'], {
       encoding: 'utf8',
@@ -70,11 +77,18 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
     const now = new Date(),
       date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     system = assembleSystemPrompt({
-      base: opts.systemOverride ?? prompts.system,
-      instructions: opts.includeProjectInstructions === false ? [] : collectInstructions(opts.home, opts.cwd),
-      memory: memory
-        ? renderTemplate(prompts.fragments.memory, { memoryDir: memory, memoryIndex: readIndex(memory).text })
-        : undefined,
+      base: [opts.systemOverride ?? prompts.system, ...(runtime?.fragments ?? [])].join('\n\n'),
+      instructions:
+        opts.includeProjectInstructions === false
+          ? []
+          : (runtime?.instructions ?? collectInstructions(opts.home, opts.cwd)),
+      memory:
+        memory && (!runtime || runtime.profile.memory.includes('file-index'))
+          ? renderTemplate(prompts.fragments.memory, {
+              memoryDir: memory,
+              memoryIndex: runtime?.fileMemoryIndex ?? readIndex(memory).text,
+            })
+          : undefined,
       env: {
         cwd: opts.cwd,
         platform: process.platform,
@@ -83,9 +97,67 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
         git: branch.status === 0 ? branch.stdout.trim() || 'unborn branch' : undefined,
       },
     });
-    frozen.set(session, system);
+    frozen.set(session, { key, system });
   }
   const provider = opts.provider ?? (model.provider === 'anthropic' ? new AnthropicProvider() : new OpenAIProvider());
+  const reducer = compactionHook({
+    provider,
+    model,
+    sessionDir: session.dir,
+    template: prompts.compact,
+    config: { ...config.compaction, ...(runtime?.profile.reducer === 'clear' ? { compactAtRatio: Infinity } : {}) },
+    signal: opts.signal ?? new AbortController().signal,
+    onSummary: (usage, latencyMs, cache) =>
+      session.append({
+        type: 'trace',
+        name: 'turn',
+        data: { kind: 'compaction', usage, latencyMs, ...(cache ? { cache } : {}) },
+      }),
+    onFailure: (message) =>
+      session.append({ type: 'trace', name: 'hook', data: { hook: 'compaction', decision: 'failed', message } }),
+  });
+  const contextHook = runtime
+    ? {
+        async modelContext(messages: readonly import('../ai/index.ts').Message[]) {
+          const ctx = {
+            cwd: opts.cwd,
+            home: opts.home,
+            sessionDir: session.dir,
+            prompt: opts.prompt,
+            messages: structuredClone([...messages]),
+            signal: opts.signal ?? new AbortController().signal,
+          };
+          const parts: string[] = [];
+          if (runtime.profile.memory.includes('file-recall') && memory) parts.push(readIndex(memory).text);
+          for (const strategy of runtime.memory) parts.push(await strategy.recall(ctx));
+          for (const provider of runtime.context) parts.push(await provider.provide(ctx));
+          return parts.filter((part) => part.trim()).join('\n\n');
+        },
+      }
+    : {};
+  let pluginContinuations = 0;
+  const pluginHooks = (runtime?.hooks ?? []).map((hook) => ({
+    ...hook,
+    ...(hook.onStop
+      ? {
+          async onStop(last: import('../ai/index.ts').AssistantMessage) {
+            const decision = await hook.onStop!(last);
+            if (decision.action === 'continue') {
+              if (pluginContinuations >= config.hooks.maxStopContinuations) {
+                session.append({
+                  type: 'trace',
+                  name: 'hook',
+                  data: { hook: hook.id, decision: 'stop', exhausted: true },
+                });
+                return { action: 'stop' } as const;
+              }
+              pluginContinuations++;
+            }
+            return decision;
+          },
+        }
+      : {}),
+  }));
   return {
     provider,
     model,
@@ -94,22 +166,15 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
     tools,
     hooks: traceHooks(
       composeHooks(
-        compactionHook({
-          provider,
-          model,
-          sessionDir: session.dir,
-          template: prompts.compact,
-          config: config.compaction,
-          signal: opts.signal ?? new AbortController().signal,
-          onSummary: (usage, latencyMs, cache) =>
-            session.append({
-              type: 'trace',
-              name: 'turn',
-              data: { kind: 'compaction', usage, latencyMs, ...(cache ? { cache } : {}) },
-            }),
-          onFailure: (message) =>
-            session.append({ type: 'trace', name: 'hook', data: { hook: 'compaction', decision: 'failed', message } }),
-        }),
+        runtime?.profile.reducer === 'none'
+          ? {}
+          : runtime?.profile.reducer === 'clear'
+            ? {
+                beforeModel: (messages, info) =>
+                  info.force ? Promise.resolve(undefined) : reducer.beforeModel!(messages, info),
+              }
+            : reducer,
+        contextHook,
         permissionHook({
           mode: config.permissions.mode,
           root: projectRoot(opts.cwd),
@@ -122,6 +187,7 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           strictWritePaths: opts.strictWritePaths,
           approvals: sessionApprovals.get(session),
         }),
+        ...pluginHooks,
         afterEditHook({
           fileCwd: opts.cwd,
           cwd: projectRoot(opts.cwd),
@@ -129,7 +195,7 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           commands: config.hooks.afterEdit,
           signal: opts.signal ?? new AbortController().signal,
         }),
-        offloadHook({ sessionDir: session.dir, ...config.toolOutput }),
+        runtime?.profile.offload === false ? {} : offloadHook({ sessionDir: session.dir, ...config.toolOutput }),
         stopCheckHook({
           cwd: projectRoot(opts.cwd),
           home: opts.home,

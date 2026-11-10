@@ -28,7 +28,8 @@ export interface Tool {
   name: string;
   description: string; // 从 prompts/tools/<name>.md 加载
   parameters: JsonSchema;
-  readOnly: boolean; // 权限层用：只读工具永远放行
+  readOnly: boolean; // 权限层用；外部工具不能凭此声明绕过审批
+  external?: { pluginId: string; fingerprint: string }; // 由宿主标记实现来源与版本
   execute(args: Record<string, unknown>, ctx: ToolContext): Promise<ToolResult>;
 }
 
@@ -40,6 +41,8 @@ export type BeforeToolDecision = { action: 'allow' } | { action: 'deny'; reason:
 export type StopDecision = { action: 'stop' } | { action: 'continue'; message: string };
 
 export type Hooks = {
+  /** 每次模型请求前生成临时 system 后缀；不改写持久消息与原 system。 */
+  modelContext?(messages: readonly Message[]): Promise<string | undefined>;
   /** 每次调模型前。可返回替换后的消息数组（压缩），并说明原因；返回 undefined 表示不变。 */
   /** force=true：上下文溢出后的被动压缩，或 /compact 手动触发——必须执行 Level 2 压缩。 */
   beforeModel?(

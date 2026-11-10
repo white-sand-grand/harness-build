@@ -3,12 +3,15 @@ import { cp, mkdir, copyFile } from 'node:fs/promises';
 import { join, resolve, basename } from 'node:path';
 import type { Provider } from '../ai/index.ts';
 import type { Config } from '../app/config.ts';
+import type { RuntimeSnapshot } from '../app/runtime.ts';
+import { writePromptSelection } from '../app/prompt-selection.ts';
 import { defaultPromptsDir } from '../app/prompts.ts';
 import { detectShell } from '../util/process.ts';
 import { isWithin, realPath } from '../util/paths.ts';
 import { runEval, readManifest, readResults, type EvalOptions } from './runner.ts';
 import { loadTasks } from './task.ts';
-import { analyzeRun } from './analyze.ts';
+import { evidenceOptimizer, type PromptOptimizer } from './optimizer.ts';
+import { writePromptArtifact } from './prompt-artifact.ts';
 import { PROMPT_FILES, PROMPT_TARGETS, promptHash, validateCandidate, type PromptTarget } from './candidate.ts';
 import { redactText } from './provenance.ts';
 import { evaluateCandidate, type GateDecision } from './gate.ts';
@@ -19,7 +22,9 @@ export type EvolutionOptions = {
   tasksDir: string;
   outputDir: string;
   config: Config;
+  runtimeSnapshot?: RuntimeSnapshot;
   optimizerConfig?: Config;
+  optimizer?: PromptOptimizer;
   promptsDir?: string;
   pattern?: string;
   repeat?: number;
@@ -76,6 +81,19 @@ async function copyPrompts(source: string, destination: string) {
   }
 }
 export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionResult> {
+  if (opts.config.runtime && !opts.runtimeSnapshot)
+    throw new Error('Runtime evolution requires a frozen runtimeSnapshot.');
+  if (opts.runtimeSnapshot)
+    opts = {
+      ...opts,
+      config: {
+        ...opts.runtimeSnapshot.config,
+        model: opts.config.model,
+        provider: opts.config.provider,
+        models: opts.config.models,
+        thinking: opts.config.thinking,
+      },
+    };
   const output = resolve(opts.outputDir),
     repeat = opts.repeat ?? 2;
   const maxRounds = opts.maxRounds ?? 3,
@@ -91,20 +109,27 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
     if (!Number.isSafeInteger(value) || value < 1) throw new Error(`${name} must be a positive safe integer.`);
   if (limits.maxDurationSec > 2147483) throw new Error('maxDurationSec exceeds the timer limit.');
   const shell = detectShell();
+  const activeTargets = PROMPT_TARGETS.filter(
+    (file) =>
+      file === 'system.md' ||
+      !opts.runtimeSnapshot ||
+      opts.runtimeSnapshot.profile.tools.includes(file.slice('tools/'.length, -'.md'.length)),
+  );
   const targets =
-    opts.targets ?? PROMPT_TARGETS.filter((file) => file !== 'tools/bash.md' || shell.kind !== 'powershell');
-  if (!targets.length || targets.some((file) => !PROMPT_TARGETS.includes(file)))
+    opts.targets ?? activeTargets.filter((file) => file !== 'tools/bash.md' || shell.kind !== 'powershell');
+  if (!targets.length || targets.some((file) => !activeTargets.includes(file)))
     throw new Error('Invalid prompt targets.');
   if (shell.kind === 'powershell' && targets.includes('tools/bash.md'))
     throw new Error('The PowerShell fallback overrides tools/bash.md; choose another target.');
   const tasks = loadTasks(opts.tasksDir, { pattern: opts.pattern });
   if (!tasks.some((task) => task.split === 'dev')) throw new Error('Evolution requires development tasks.');
   const sourcePrompts = resolve(opts.promptsDir ?? opts.config.promptsDir ?? defaultPromptsDir);
-  promptHash(sourcePrompts);
+  if (!opts.runtimeSnapshot || opts.promptsDir) promptHash(sourcePrompts);
   if ([resolve(opts.tasksDir), sourcePrompts].some((dir) => isWithin(realPath(dir), realPath(output))))
     throw new Error('Evolution output must be outside the task and source prompt directories.');
   mkdirSync(output, { recursive: true });
-  const optimizerConfig = opts.optimizerConfig ?? opts.config;
+  const optimizerConfig = opts.optimizerConfig ?? opts.config,
+    optimizer = opts.optimizer ?? evidenceOptimizer;
   writeFileSync(
     join(output, 'experiment.json'),
     JSON.stringify(
@@ -113,7 +138,12 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
         createdAt: new Date().toISOString(),
         status: 'running',
         actor: { model: opts.config.model, provider: opts.config.provider },
-        optimizer: { model: optimizerConfig.model, provider: optimizerConfig.provider },
+        optimizer: {
+          id: optimizer.id,
+          version: optimizer.version,
+          model: optimizerConfig.model,
+          provider: optimizerConfig.provider,
+        },
         repeat,
         maxRounds,
         candidatesPerRound: count,
@@ -145,6 +175,7 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
   let audit: Audit = { status: 'notRun', reasons: ['Search has not completed.'] };
   let confirmation: EvolutionResult['confirmation'];
   let error: string | undefined,
+    bestParentHash: string | undefined,
     stagnant = 0;
   const candidates: CandidateRecord[] = [],
     hashes = new Set<string>();
@@ -158,6 +189,7 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
       tasksDir: frozenTasks,
       runDir,
       config: opts.config,
+      runtimeSnapshot: opts.runtimeSnapshot,
       promptsDir,
       evaluatorPromptsDir: baselinePrompts,
       split,
@@ -172,7 +204,8 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
     });
   }
   try {
-    await copyPrompts(sourcePrompts, baselinePrompts);
+    if (opts.runtimeSnapshot && !opts.promptsDir) writePromptSelection(opts.runtimeSnapshot.prompts, baselinePrompts);
+    else await copyPrompts(sourcePrompts, baselinePrompts);
     await cp(resolve(opts.tasksDir), frozenTasks, { recursive: true });
     hashes.add(promptHash(baselinePrompts));
     const baseline = await evaluate(baselineRun, baselinePrompts, 'dev');
@@ -196,7 +229,7 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
       for (let index = 1; index <= count && !budget.signal.aborted; index++) {
         const targetFile = targets[((round - 1) * count + index - 1) % targets.length]!;
         opts.onProgress?.(`Proposing round ${round}, candidate ${index}: ${targetFile}`);
-        const proposal = await analyzeRun({
+        const proposal = await optimizer.propose({
           runDir: bestRun,
           variantsDir: join(output, 'proposals', String(round)),
           config: optimizerConfig,
@@ -250,6 +283,7 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
         record(candidate);
         json(join(output, 'candidates', candidate.id, 'gate.json'), gate);
         if (gate.decision === 'recommend') {
+          bestParentHash = promptHash(bestPrompts);
           bestId = candidate.id;
           bestRun = candidate.runDir;
           bestPrompts = candidate.promptsDir;
@@ -373,6 +407,14 @@ export async function runEvolution(opts: EvolutionOptions): Promise<EvolutionRes
   writeFileSync(join(output, 'report.md'), renderEvolution(result) + (comparison ? '\n\n' + comparison + '\n' : ''));
   const manifest = JSON.parse(readFileSync(join(output, 'experiment.json'), 'utf8')) as Record<string, unknown>;
   json(join(output, 'experiment.json'), { ...manifest, status: 'completed', decision, stopReason });
+  if (decision === 'recommend' || decision === 'unchanged')
+    writePromptArtifact({
+      outputDir: output,
+      promptsDir: decision === 'recommend' ? bestPrompts : baselinePrompts,
+      decision,
+      optimizer,
+      parentHash: bestParentHash ?? promptHash(baselinePrompts),
+    });
   opts.onProgress?.(`Evolution: ${decision}; ${stopReason}`);
   return result;
 }

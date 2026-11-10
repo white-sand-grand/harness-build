@@ -68,6 +68,31 @@ export function permissionHook(opts: {
   const approved = opts.approvals ?? new Set<string>();
   return {
     async beforeTool(call, tool) {
+      if (tool.external) {
+        if (opts.strictReadRoots || opts.strictWriteRoots || opts.strictWritePaths)
+          return { action: 'deny', reason: 'Blocked: external tools are not available in restricted operations.' };
+        if (opts.mode === 'yolo') return { action: 'allow' };
+        const { pluginId, fingerprint } = tool.external;
+        const key = JSON.stringify(['external', pluginId, fingerprint, tool.name]);
+        if (approved.has(key)) return { action: 'allow' };
+        if (!opts.ask)
+          return {
+            action: 'deny',
+            reason: 'Blocked: external tools require approval and no user is available to approve this action.',
+          };
+        const answer = await opts.ask({
+          title: `Approve external tool ${tool.name}?`,
+          detail: `Plugin: ${pluginId}\nFingerprint: ${fingerprint}\nArguments: ${JSON.stringify(call.args)}`,
+        });
+        if (answer === 'deny')
+          return {
+            action: 'deny',
+            reason:
+              'The user denied this action. Do not retry it; ask the user how to proceed or choose a different approach.',
+          };
+        if (answer === 'session') approved.add(key);
+        return { action: 'allow' };
+      }
       if (call.name === 'read' && opts.strictReadRoots) {
         const path = resolvePath(opts.cwd ?? opts.root, String(call.args.path));
         if (hasSymlink(path) || !opts.strictReadRoots.some((root) => isWithin(realPath(root), realPath(path))))

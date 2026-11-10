@@ -8,10 +8,16 @@ import { createRenderer } from './render.ts';
 import { createAsker } from './ask.ts';
 import { compactSession } from '../app/compact.ts';
 import { memoryDir, readIndex } from '../memory/memory-dir.ts';
-export async function runREPL(opts: Omit<StartRunOptions, 'prompt'>, initial = '', hideThinking = false) {
+import type { Asker } from '../hooks/permission.ts';
+export async function runREPL(
+  opts: Omit<StartRunOptions, 'prompt'> & { onAsker?: (ask: Asker) => void },
+  initial = '',
+  hideThinking = false,
+) {
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: 'mh> ' });
   const ask = createAsker(rl),
     render = createRenderer({ hideThinking });
+  opts.onAsker?.(ask);
   let session: SessionStore | undefined = opts.session,
     busy: Promise<void> | undefined,
     controller: AbortController | undefined,
@@ -71,18 +77,43 @@ export async function runREPL(opts: Omit<StartRunOptions, 'prompt'>, initial = '
       rl.prompt();
       return;
     }
+    const [command, ...args] = line.trim().split(/\s+/);
+    if (command === '/exit') {
+      rl.close();
+      return;
+    }
     if (busy) {
+      if (['/profile', '/reload', '/plugins'].includes(command ?? '')) {
+        console.log('Runtime commands are available after the current run finishes.');
+        return;
+      }
       queue.push({ role: 'user', content: [{ type: 'text', text: line }] });
       console.log('[queued]');
       return;
     }
-    if (line.startsWith('/')) {
-      const [command, ...args] = line.trim().split(/\s+/);
-      if (command === '/exit') {
-        rl.close();
-        return;
-      }
-      if (command === '/clear') {
+    if (line.trim().startsWith('/')) {
+      if (command === '/profile' || command === '/reload' || command === '/plugins') {
+        const runtime = opts.runtime;
+        if (!runtime) console.log('Runtime is disabled. Configure runtime or start with --profile default / --watch.');
+        else if (command === '/plugins') console.log(JSON.stringify(runtime.status(), null, 2));
+        else if (command === '/profile' && !args.length) console.log(runtime.status().profile);
+        else if ((command === '/reload' && args.length) || args.length > 1)
+          console.log('Usage: /profile [name] | /reload | /plugins');
+        else {
+          busy = runtime
+            .reload(command === '/profile' ? args[0] : undefined)
+            .then((result) => {
+              if (result.ok) console.log(`Runtime reloaded: ${runtime.status().profile}.`);
+              else console.error(`Reload failed; previous runtime retained: ${result.error}`);
+            })
+            .catch((error) => console.error(error instanceof Error ? error.message : String(error)))
+            .finally(() => {
+              busy = undefined;
+              rl.prompt();
+            });
+          return;
+        }
+      } else if (command === '/clear') {
         session = undefined;
         queue.length = 0;
       } else if (command === '/session') console.log(session?.id ?? '(no session)');
@@ -117,7 +148,7 @@ export async function runREPL(opts: Omit<StartRunOptions, 'prompt'>, initial = '
             cost: stats.cost ?? 'n/a',
           }),
         );
-      } else console.log('/help /model <id> /compact /clear /cost /session /exit');
+      } else console.log('/help /model <id> /profile [name] /reload /plugins /compact /clear /cost /session /exit');
       rl.prompt();
       return;
     }
@@ -144,6 +175,10 @@ export async function runREPL(opts: Omit<StartRunOptions, 'prompt'>, initial = '
   );
   if (initial) launch(initial);
   else rl.prompt();
-  await closed;
-  await busy;
+  try {
+    await closed;
+    await busy;
+  } finally {
+    await opts.runtime?.close();
+  }
 }

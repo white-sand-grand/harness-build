@@ -1,6 +1,14 @@
 import type { Hooks, ContextReplacement } from '../agent/index.ts';
 export function composeHooks(...hooks: Hooks[]): Hooks {
   return {
+    async modelContext(messages) {
+      const parts: string[] = [];
+      for (const h of hooks) {
+        const part = (await h.modelContext?.(messages))?.trim();
+        if (part) parts.push(part);
+      }
+      return parts.length ? parts.join('\n\n') : undefined;
+    },
     async beforeModel(messages, info) {
       let replacement: ContextReplacement | undefined;
       for (const h of hooks) {
@@ -42,6 +50,14 @@ export function traceHooks(hooks: Hooks, record: (data: Record<string, unknown>)
     }
   }
   return {
+    modelContext: hooks.modelContext
+      ? (messages) =>
+          timed(
+            'modelContext',
+            () => hooks.modelContext!(messages),
+            (r) => (r?.trim() ? 'provided' : 'empty'),
+          )
+      : undefined,
     beforeModel: hooks.beforeModel
       ? (messages, info) =>
           timed(

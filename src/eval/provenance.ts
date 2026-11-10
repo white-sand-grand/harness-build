@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ModelInfo } from '../ai/index.ts';
 import type { Config } from '../app/config.ts';
+import type { RuntimeSnapshot } from '../app/runtime.ts';
 import { detectShell } from '../util/process.ts';
 import type { EvalTask } from './task.ts';
 
@@ -109,6 +110,7 @@ export function createProvenance(opts: {
   model: ModelInfo;
   repeat: number;
   concurrency: number;
+  runtimeSnapshot?: RuntimeSnapshot;
 }): RunProvenance {
   const executionKeys = new Set([
     'path',
@@ -132,7 +134,14 @@ export function createProvenance(opts: {
       ),
     ),
   );
-  const { promptsDir: _promptsDir, models: _models, ...configuration } = opts.config;
+  const { promptsDir: _promptsDir, models: _models, runtime: _runtime, ...configuration } = opts.config;
+  const runtime = opts.runtimeSnapshot
+    ? {
+        actorHash: opts.runtimeSnapshot.actorHash,
+        profile: opts.runtimeSnapshot.profileName,
+        plugins: opts.runtimeSnapshot.plugins.map(({ id, version, fingerprint }) => ({ id, version, fingerprint })),
+      }
+    : undefined;
   const endpoint =
     opts.model.baseUrl ??
     (opts.model.provider === 'anthropic'
@@ -156,7 +165,10 @@ export function createProvenance(opts: {
         package: hashText(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)))),
       }),
     ),
-    effectiveConfig: sanitizeForArtifact(configuration) as Record<string, unknown>,
+    effectiveConfig: sanitizeForArtifact({ ...configuration, ...(runtime ? { runtime } : {}) }) as Record<
+      string,
+      unknown
+    >,
     model: sanitizeForArtifact({ ...opts.model, baseUrl: endpoint }) as Record<string, unknown>,
     platform: process.platform,
     arch: process.arch,

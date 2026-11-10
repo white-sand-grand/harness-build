@@ -4,6 +4,7 @@ import type { ProviderId, ThinkingLevel, ModelInfo } from '../ai/index.ts';
 import { projectRoot } from '../util/paths.ts';
 import { validateConfig } from './config-schema.ts';
 import { isProjectTrusted, trustProjectHooks } from '../hooks/trust.ts';
+import type { RuntimeConfig } from './plugin-types.ts';
 export type HookCommand = { match?: string; command: string; timeoutSec?: number };
 export type Config = {
   provider: ProviderId;
@@ -15,6 +16,7 @@ export type Config = {
   compaction: { enabled: boolean; clearAtRatio: number; compactAtRatio: number; keepRecentTokens: number };
   toolOutput: { maxChars: number; maxLines: number };
   promptsDir?: string;
+  runtime?: RuntimeConfig;
 };
 export function defaultConfig(): Config {
   return {
@@ -37,6 +39,13 @@ export function mergeConfig(base: Config, override: Partial<Config>): Config {
     hooks: { ...base.hooks, ...override.hooks },
     compaction: { ...base.compaction, ...override.compaction },
     toolOutput: { ...base.toolOutput, ...override.toolOutput },
+    ...((base.runtime || override.runtime) && {
+      runtime: {
+        ...base.runtime,
+        ...override.runtime,
+        profiles: { ...base.runtime?.profiles, ...override.runtime?.profiles },
+      },
+    }),
   };
 }
 export function loadConfig(opts: {

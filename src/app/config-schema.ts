@@ -28,6 +28,18 @@ const modelSchema = object({
     promptCache: bool,
   }),
 });
+const names: JsonSchema = { type: 'array', items: str };
+const profileSchema = object({
+  tools: names,
+  context: names,
+  memory: names,
+  prompts: names,
+  hooks: names,
+  reducer: { type: 'string', enum: ['default', 'clear', 'none'] },
+  offload: bool,
+  promptsDir: str,
+  promptArtifact: str,
+});
 modelSchema.properties!.pricing!.required = ['input', 'output', 'cacheRead', 'cacheWrite'];
 const configSchema = object({
   provider: { type: 'string', enum: ['anthropic', 'openai'] },
@@ -47,6 +59,7 @@ const configSchema = object({
     keepRecentTokens: positive,
   }),
   toolOutput: object({ maxChars: positive, maxLines: positive }),
+  runtime: object({ profile: str, profiles: { type: 'object' }, plugins: names, watch: bool }),
 });
 export function validateConfig(data: unknown, path: string): void {
   function secrets(v: unknown, p: string) {
@@ -59,6 +72,15 @@ export function validateConfig(data: unknown, path: string): void {
   }
   secrets(data, '');
   const errors = validateSchema(configSchema, data);
+  if (data && typeof data === 'object' && 'runtime' in data) {
+    const runtime = (data as { runtime?: { profiles?: unknown } }).runtime;
+    const profiles = runtime?.profiles;
+    if (profiles && typeof profiles === 'object' && !Array.isArray(profiles))
+      for (const [name, profile] of Object.entries(profiles)) {
+        if (!/^[A-Za-z0-9_-]+$/.test(name)) errors.push('runtime.profiles has an invalid profile name');
+        errors.push(...validateSchema(profileSchema, profile, `runtime.profiles.${name}`));
+      }
+  }
   if (data && typeof data === 'object' && 'models' in data) {
     const models = (data as { models: unknown }).models;
     if (models && typeof models === 'object' && !Array.isArray(models))

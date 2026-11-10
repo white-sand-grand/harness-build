@@ -10,7 +10,7 @@ export type SessionEntry =
       type: 'trace';
       id: string;
       ts: string;
-      name: 'systemPrompt' | 'turn' | 'tool' | 'hook' | 'agentEnd';
+      name: 'systemPrompt' | 'turn' | 'tool' | 'hook' | 'agentEnd' | 'runtime';
       data: Record<string, unknown>;
     };
 export interface SessionStore {

@@ -15,6 +15,8 @@ export function parseCLI(args: string[]) {
       model: { type: 'string' },
       thinking: { type: 'string' },
       prompts: { type: 'string' },
+      profile: { type: 'string' },
+      watch: { type: 'boolean' },
       yolo: { type: 'boolean' },
       'trust-project': { type: 'boolean' },
       'max-turns': { type: 'string' },
@@ -74,14 +76,16 @@ Usage: mh [prompt] | mh -p "prompt" [--json]
   --model <id>             Model identifier
   --thinking <level>       off | low | medium | high
   --prompts <dir>          Override prompt directory
+  --profile <name>         Select a runtime composition profile
+  --watch                  Reload changed runtime inputs before the next run
   --max-turns <n>          Run budget (default 50)
   --cwd <dir>              Working directory
   --yolo                   Allow all ordinary tool actions
-  --trust-project          Trust project hook commands
+  --trust-project          Trust current project hooks and exact plugin fingerprints
   --hide-thinking          Hide thinking text in interactive output
   --json                   JSONL events / JSON command output
   --help, --version
-Commands: sessions | trace [id] | memory [show|path|undo]
+Commands: sessions | trace [id] | memory [show|path|undo] | plugins
           dream [--sessions N] [--dry-run]
           ralph "prompt" --check "cmd" [--max-iter N]
           eval run [--tasks glob] [--split dev|heldout|all] [--repeat N]
@@ -91,6 +95,7 @@ Commands: sessions | trace [id] | memory [show|path|undo]
                  [--repeat N] [--max-calls N] [--max-tokens N] [--timeout seconds]
                  [--optimizer-model id] [--optimizer-provider id] [--output dir]
 Evolve preserves default prompts; search/selection use dev, then heldout is audited once.
+Interactive: /profile [name] /reload /plugins (available between runs).
 Windows shell: Git Bash → pwsh → powershell. The bash tool reports active syntax.
 Permissions are accident-prevention guardrails, not a security boundary (不是安全边界).
 For unattended work use a container or another OS-level sandbox.

@@ -30,7 +30,7 @@
 | `edit`  | [edit.ts](../../src/tools/edit.ts)   | 精确匹配旧文字，多处匹配需要上下文或 `replaceAll`；保留换行格式和 BOM       |
 | `bash`  | [bash.ts](../../src/tools/bash.ts)   | 利用已有命令搜索和测试，返回输出、退出码、超时和中断状态                    |
 
-只保留这四种接口，是因为文件搜索、Git、构建工具已经能通过命令行使用。代价是 shell 命令会受到平台差异影响，也无法像专门工具一样提供细粒度参数约束。
+默认使用这四种接口，是因为文件搜索、Git、构建工具已经能通过命令行使用。代价是 shell 命令会受到平台差异影响，也无法像专门工具一样提供细粒度参数约束。插件通过相同 Tool 契约扩展能力，由[第八章](08-composition.md)的 profile 选择；内置工具实现与可优化说明保持分离。
 
 工具说明单独放在 [prompts/tools](../../prompts/tools)，因此可以对说明做实验，而不修改执行逻辑。参数结构仍由代码定义。
 
@@ -78,7 +78,7 @@ node --import ./test/helpers/setup.ts --test test/unit/tools/tools.test.ts test/
 
 在测试中跟踪“失败后发生了什么”：多处匹配是否拒绝；越界链接是否触发询问；超时后不响应 SIGTERM 的后代是否终止。Windows 管道的实际执行案例只在原生 Windows 下运行，WSL 的通过结果不能代替它。
 
-`bash timeout is reported as a tool error` 和 `bash abort is reported as a tool error` 验证执行失败标记；并发任务的子进程数据目录隔离在[第八章](08-evaluation.md#一次尝试如何保持独立)继续检查。
+`bash timeout is reported as a tool error` 和 `bash abort is reported as a tool error` 验证执行失败标记；并发任务的子进程数据目录隔离在[第十章](10-evaluation.md#一次尝试如何保持独立)继续检查。
 
 思考题：如果想并行执行所有工具，`edit → bash 测试` 这个顺序会发生什么？是否只标记 `readOnly` 就足以判断任意工具之间没有依赖？
 

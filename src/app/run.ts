@@ -8,6 +8,9 @@ import type { SessionStore } from '../session/index.ts';
 import type { Asker } from '../hooks/permission.ts';
 import type { Config } from './config.ts';
 import { buildAgent } from './build-agent.ts';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { createRuntime, type RuntimeLease, type RuntimeManager, type RuntimeSnapshot } from './runtime.ts';
 export type StartRunOptions = {
   cwd: string;
   home: string;
@@ -26,6 +29,9 @@ export type StartRunOptions = {
   includeProjectInstructions?: boolean;
   maxTurns?: number;
   getSteering?: () => Message[];
+  runtime?: RuntimeManager;
+  runtimeSnapshot?: RuntimeSnapshot;
+  trustPlugins?: boolean;
 };
 export type StartRunResult = {
   reason: AgentEndReason;
@@ -55,6 +61,49 @@ export function persistReplacement(session: SessionStore, r: ContextReplacement)
   }
 }
 export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
+  const restricted = !!(
+    opts.systemOverride ||
+    opts.toolsFilter ||
+    opts.writeRoots ||
+    opts.strictReadRoots ||
+    opts.strictWritePaths ||
+    opts.includeProjectInstructions === false
+  );
+  if (restricted) return executeRun({ ...opts, runtime: undefined, runtimeSnapshot: undefined });
+  const own =
+    !opts.runtime && !opts.runtimeSnapshot && opts.config.runtime
+      ? await createRuntime({
+          cwd: opts.cwd,
+          home: opts.home,
+          config: opts.config,
+          ask: opts.ask,
+          trustPlugins: opts.trustPlugins,
+        })
+      : undefined;
+  const runtime = opts.runtime ?? own;
+  let lease: RuntimeLease | undefined;
+  try {
+    lease = runtime ? await runtime.acquireRun() : undefined;
+    const snapshot = opts.runtimeSnapshot ?? lease?.snapshot;
+    return await executeRun({
+      ...opts,
+      runtimeSnapshot: snapshot,
+      config: snapshot
+        ? {
+            ...snapshot.config,
+            model: opts.config.model,
+            provider: opts.config.provider,
+            models: opts.config.models,
+            thinking: opts.config.thinking,
+          }
+        : opts.config,
+    });
+  } finally {
+    await lease?.release();
+    await own?.close();
+  }
+}
+async function executeRun(opts: StartRunOptions): Promise<StartRunResult> {
   const session = opts.session ?? createSession(opts.home, opts.cwd),
     cfg = buildAgent(opts, session),
     messages = session.context().messages;
@@ -63,12 +112,60 @@ export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
     turns = 0,
     started = Date.now(),
     finalText = '';
-  if (!session.entries().some((e) => e.type === 'trace' && e.name === 'systemPrompt'))
+  const systemHash = createHash('sha256').update(cfg.system).digest('hex');
+  const previousSystem = session.entries().findLast((e) => e.type === 'trace' && e.name === 'systemPrompt');
+  if (previousSystem?.type !== 'trace' || previousSystem.data.hash !== systemHash)
     session.append({
       type: 'trace',
       name: 'systemPrompt',
-      data: { hash: createHash('sha256').update(cfg.system).digest('hex'), length: cfg.system.length },
+      data: { hash: systemHash, length: cfg.system.length },
     });
+  if (opts.runtimeSnapshot) {
+    const snapshot = opts.runtimeSnapshot;
+    const previous = session.entries().findLast((e) => e.type === 'trace' && e.name === 'runtime');
+    if (previous?.type !== 'trace' || previous.data.id !== snapshot.id || previous.data.systemHash !== systemHash) {
+      const directory = join(session.dir, 'runtime');
+      mkdirSync(directory, { recursive: true });
+      const file = join(directory, snapshot.id + '-' + systemHash + '.json');
+      writeFileSync(
+        file,
+        JSON.stringify(
+          {
+            v: 1,
+            id: snapshot.id,
+            actorHash: snapshot.actorHash,
+            promptHash: snapshot.promptHash,
+            profile: snapshot.profileName,
+            composition: snapshot.profile,
+            plugins: snapshot.plugins,
+            sourceDirectories: snapshot.sourceDirectories,
+            system: cfg.system,
+            prompts: snapshot.prompts,
+            tools: cfg.tools.map(({ name, description, parameters, external }) => ({
+              name,
+              description,
+              parameters,
+              external,
+            })),
+          },
+          null,
+          2,
+        ) + '\n',
+      );
+      session.append({
+        type: 'trace',
+        name: 'runtime',
+        data: {
+          id: snapshot.id,
+          actorHash: snapshot.actorHash,
+          profile: snapshot.profileName,
+          promptHash: snapshot.promptHash,
+          systemHash,
+          file,
+        },
+      });
+    }
+  }
   function onEvent(e: AgentEvent) {
     if (e.type === 'turnStart') {
       turns = e.turn;
@@ -155,13 +252,37 @@ export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
     onEvent({ type: 'message', message: user });
   }
   let reason: AgentEndReason;
+  let terminal: Extract<AgentEvent, { type: 'agentEnd' }> | undefined;
   try {
     reason = await runAgent(cfg, messages, {
       signal: opts.signal ?? new AbortController().signal,
-      onEvent,
+      onEvent: (event) => {
+        if (event.type === 'agentEnd') terminal = event;
+        else onEvent(event);
+      },
       getSteering: opts.getSteering,
       toolContext: { cwd: opts.cwd, sessionDir: session.dir, home: opts.home },
     });
+    if (reason === 'done')
+      for (const memory of opts.runtimeSnapshot?.memory ?? []) {
+        try {
+          await memory.remember?.(
+            {
+              cwd: opts.cwd,
+              home: opts.home,
+              sessionDir: session.dir,
+              prompt: opts.prompt,
+              messages: session.context().messages,
+              signal: opts.signal ?? new AbortController().signal,
+            },
+            reason,
+          );
+        } catch (error) {
+          session.append({ type: 'trace', name: 'hook', data: { hook: memory.id + '.remember', decision: 'error' } });
+          throw error;
+        }
+      }
+    if (terminal) onEvent(terminal);
   } catch (error) {
     onEvent({
       type: 'agentEnd',

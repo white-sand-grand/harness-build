@@ -1,0 +1,259 @@
+{
+  "v": 2,
+  "date": "2026-11-10",
+  "timezone": "Asia/Shanghai",
+  "implementation": {
+    "protocol": "mini-harness worker modules",
+    "reloadBoundary": "next complete startRun; steering retains the current lease",
+    "mcpCompatibilityClaimed": false,
+    "workerSubprocessCreationSupported": false,
+    "defaultPromptsAutomaticallyChanged": false
+  },
+  "offline": {
+    "wsl": {
+      "node": "v24.19.0",
+      "tests": 347,
+      "passed": 347,
+      "failed": 0,
+      "skipped": 0,
+      "checkPassed": true
+    },
+    "windows": {
+      "node": "v24.18.0",
+      "mode": "serial",
+      "tests": 348,
+      "passed": 348,
+      "failed": 0,
+      "skipped": 0,
+      "compiledCliPassed": true
+    },
+    "inventory": {
+      "previous": 288,
+      "retained": 288,
+      "added": 59,
+      "current": 347
+    },
+    "taskValidation": {
+      "tasks": 8,
+      "passed": 8
+    }
+  },
+  "live": {
+    "model": "step-5-preview",
+    "endpoint": "https://api.stepfun.com/step_plan/v1/messages",
+    "status": "passed",
+    "harnessHash": "76d4e30b3a994777c2ce7b5c1fe61cc2c5ebda1765d9b0c47b74c68526d921e7",
+    "finalSourceRecheck": {
+      "status": "passed",
+      "cases": [
+        {
+          "name": "v1-in-flight-reload-retains-current-tools-and-memory",
+          "status": "passed",
+          "reason": "done",
+          "modelCalls": 2,
+          "turns": 2
+        },
+        {
+          "name": "same-session-next-run-uses-v2",
+          "status": "passed",
+          "reason": "done",
+          "modelCalls": 2,
+          "turns": 2
+        },
+        {
+          "name": "failed-profile-reload-rollback-still-uses-v2",
+          "status": "passed",
+          "reason": "done",
+          "modelCalls": 2,
+          "turns": 2
+        },
+        {
+          "name": "built-in-read-write-bash-repairs-and-runs-a-real-node-test",
+          "status": "passed",
+          "reason": "done",
+          "modelCalls": 4,
+          "turns": 4
+        }
+      ],
+      "modelCalls": 10,
+      "usage": {
+        "input": 11772,
+        "output": 1821,
+        "cacheRead": 4352,
+        "cacheWrite": 0
+      }
+    },
+    "promptOptimization": {
+      "status": "passed",
+      "scope": "Controlled repair of an intentionally defective ACK-only prompt; no improvement over default project prompts claimed.",
+      "decision": "recommend",
+      "stopReason": "insufficientEvidence",
+      "optimizer": {
+        "id": "live-evidence-adapter",
+        "version": "1",
+        "invocations": 2
+      },
+      "scores": {
+        "baselineDev": {
+          "attempts": 2,
+          "passed": 0
+        },
+        "selectedDev": {
+          "attempts": 2,
+          "passed": 2
+        },
+        "confirmationBaseline": {
+          "attempts": 2,
+          "passed": 0
+        },
+        "confirmationCandidate": {
+          "attempts": 2,
+          "passed": 2
+        },
+        "heldoutBaseline": {
+          "attempts": 2,
+          "passed": 0
+        },
+        "heldoutCandidate": {
+          "attempts": 2,
+          "passed": 2
+        }
+      },
+      "resources": {
+        "limits": {
+          "maxModelCalls": 100,
+          "maxTokens": 500000,
+          "maxDurationSec": 600
+        },
+        "calls": {
+          "actor": 39,
+          "optimizer": 7,
+          "judge": 0
+        },
+        "responses": {
+          "actor": 39,
+          "optimizer": 7,
+          "judge": 0
+        },
+        "usage": {
+          "actor": {
+            "input": 25439,
+            "output": 4261,
+            "cacheRead": 21504,
+            "cacheWrite": 0
+          },
+          "optimizer": {
+            "input": 16310,
+            "output": 10252,
+            "cacheRead": 42496,
+            "cacheWrite": 0
+          },
+          "judge": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        "totalTokens": 120262,
+        "usageComplete": true,
+        "cost": null,
+        "durationMs": 186004
+      },
+      "confirmation": "recommend",
+      "audit": "passed",
+      "artifact": {
+        "hash": "f4ac4994394a36880811d84f63783a49dd6b145636b19e304e828ed9a220e2df",
+        "parentHash": "f476d734ba62401735991ced424332325b9899ac353500a3094f3ad5dc24fb61",
+        "files": 12
+      },
+      "adoptableArtifactProduced": true,
+      "defaultPromptImprovementClaimed": false
+    },
+    "adoption": {
+      "promptHash": "f4ac4994394a36880811d84f63783a49dd6b145636b19e304e828ed9a220e2df",
+      "previousHash": "f476d734ba62401735991ced424332325b9899ac353500a3094f3ad5dc24fb61",
+      "profile": "default",
+      "realRun": {
+        "reason": "done",
+        "modelCalls": 4,
+        "usage": {
+          "input": 2475,
+          "output": 693,
+          "cacheRead": 2304,
+          "cacheWrite": 0
+        },
+        "checkExitCode": 0
+      }
+    },
+    "totalModelCalls": 60,
+    "totalReportedTokens": 143679,
+    "preflightExcludedFromTotals": true
+  },
+  "historicalKimi": {
+    "model": "kimi-k3.1-pro-highspeed",
+    "endpoint": "https://api.moonshot.cn/anthropic",
+    "initialImplementation": {
+      "status": "passed",
+      "cases": [
+        {
+          "name": "v1-in-flight-reload",
+          "passed": true,
+          "modelCalls": 2
+        },
+        {
+          "name": "same-session-v2",
+          "passed": true,
+          "modelCalls": 2
+        },
+        {
+          "name": "failed-reload-retains-v2",
+          "passed": true,
+          "modelCalls": 2
+        },
+        {
+          "name": "built-in-read-write-bash",
+          "passed": true,
+          "modelCalls": 4
+        }
+      ],
+      "modelCalls": 10,
+      "usage": {
+        "input": 1172,
+        "output": 1448,
+        "cacheRead": 5632,
+        "cacheWrite": 6656
+      }
+    },
+    "finalSourceRecheck": {
+      "status": "stopped",
+      "reason": "HTTP 401 incorrect_api_key_error; this attempt is incomplete"
+    },
+    "promptOptimization": {
+      "status": "incomplete",
+      "adoptableArtifactProduced": false,
+      "defaultPromptImprovementClaimed": false
+    },
+    "invalidRunsRetained": ["pre-model Git PATH failure", "subsequent authentication failures"],
+    "thinkingOffMeans": "no explicit thinking parameter; does not claim to disable K3.1 reasoning"
+  },
+  "credentialScans": [
+    {
+      "phase": "initial Kimi iteration",
+      "files": 362,
+      "matches": 0,
+      "credentialValueStored": false,
+      "kernelBindingsCleared": true
+    },
+    {
+      "phase": "Step final-source acceptance",
+      "kernelBindingsCleared": true,
+      "checkedAt": "2026-11-10T11:31:14.931Z",
+      "files": 448,
+      "matches": 0,
+      "paths": [],
+      "credentialValueStored": false,
+      "scope": "Project source/tests/docs/private research and both new Step artifact trees; excludes .git/node_modules/dist"
+    }
+  ]
+}

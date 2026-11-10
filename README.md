@@ -1,26 +1,30 @@
 # mini-harness
 
-一个用于学习编码 agent 构建过程的小型完整项目，提供可运行的实现、源码讲解和验证入口。它实现了一个命令行编码助手：接收“修复失败的测试”这样的任务，阅读代码、修改文件、运行命令，再根据实际结果继续处理。
+一个用于构建与学习**可自进化 Agent Harness**的小型完整项目。围绕“执行任务 → 记录证据 → 生成受限候选 → 独立验证 → 采用版本”组织代码、教程与实验。
 
-模型负责判断下一步做什么，mini-harness 负责把文件、终端、检查、会话记录和记忆接起来。这一层让模型能够在项目里持续工作的程序，就是这里所说的 **harness**。
+例如，一份只允许回复确认语的错误提示词会让编码任务失败。mini-harness 可以从失败轨迹提出通用指令候选，运行相同任务、重新配对确认，再审计独立任务，最后生成可加载的版本产物。通过任务结果约束改进，是这里自进化的含义；生成模型不能自己宣布修改有效。
+
+模型权重、评分标准和工具实现保持固定，自动优化的对象是系统提示及实际启用的内置工具说明。工具、上下文、记忆、提示词片段和 hooks 可通过 profile 组合；版本按完整运行切换。任务执行由纯内核负责，候选选择与采用由外层控制。
 
 项目使用 TypeScript 和 Node ≥ 24，零运行时依赖，支持 Linux、macOS、WSL 和原生 Windows。模型接口支持 Anthropic Messages 和 **OpenAI Responses（`/v1/responses`）**；OpenAI 适配器只使用 Responses。
 
-## 从这里学习构建
+## 学习主线：从执行到进化
 
-本项目也提供一条[从最小循环到完整系统的源码学习路线](docs/learn/README.md)。从一个无需 API 密钥的示例开始，逐步理解工具、模型接口、会话恢复、上下文管理、检查反馈、项目记忆和评测。每章都有设计理由、源码入口、可运行的验证和思考题。
+沿着[自进化 Harness 源码课程](docs/learn/README.md)学习：执行内核、工具与模型接口 → 会话、上下文、反馈和记忆 → 可组合能力与版本管理 → 可比较评测 → 提示词进化与采用。11 章都包含具体问题、设计理由、源码入口和验证。
 
-想先看核心，可以从[第一章：让模型和工具形成循环](docs/learn/01-loop.md)开始；想快速了解整体，可以先看[系统怎样组装](docs/learn/README.md#系统怎样组装)。
+可以先运行三个无需密钥的例子，观察[最小循环](docs/learn/examples/loop.ts)、[插件版本切换](docs/learn/examples/runtime.ts)和[完整进化闭环](docs/learn/examples/evolution.ts)。它们只固定模型回复，实际内核、worker、文件操作、检查、gate 与产物加载使用真实代码；后两个例子仅使用临时目录。
 
 ## 功能概览
 
 主要功能：
 
-- **读代码、改代码、跑命令**：通过 read、write、edit、bash 四个工具完成工作，执行过程实时显示。
-- **根据检查结果继续修复**：可以在编辑后或任务结束前运行检查，把失败信息交给模型处理。
-- **保存工作进度**：会话保存到本机，可以续接；长对话会清理旧输出或生成摘要。
-- **积累项目记忆**：用普通 Markdown 保存经验，也可以通过 dream 从历史会话中整理笔记。
-- **评测修改是否有效**：在独立目录中运行任务，比较不同提示词的通过率、用量和工具错误。
+- **固定的执行底座**：默认 read/write/edit/bash，加上参数校验、权限、进程管理与检查反馈。
+- **可追溯的运行状态**：JSONL 会话、trace、上下文缩减与项目记忆，为失败分析保留依据。
+- **可组合且有版本的能力**：profile 选择工具与策略，worker 加载插件，完整 run 之间原子切换，失败保留旧版本。
+- **可比较的评测**：独立工作区和 home，冻结检查资产、模型配置、源码与组合，记录实际请求。
+- **受限自进化闭环**：单组件候选、预算、独立 gate、新鲜配对确认、heldout 审计与显式产物采用。
+
+设计原理沿课程阅读，具体配置与命令查[运行组合和版本采用指南](docs/plugins.md)。[真实验收报告](docs/reports/pluggable-runtime-validation.md)记录了 Step 的插件复验、受控优化与产物采用结果，并区分机制验证和默认提示词收益。
 
 ## 安装与运行
 
@@ -75,9 +79,9 @@ mh trace latest --json               # 查看最近会话的执行记录
 mh ralph '修复测试' --check 'node --test' --max-iter 5
 ```
 
-可选 `--provider`、`--model`、`--thinking off|low|medium|high`、`--prompts <dir>`、`--max-turns N`、`--cwd <dir>`。打印模式退出码：0 完成、1 错误/轮次预算耗尽、2 参数错误、130 中断。
+可选 `--provider`、`--model`、`--thinking off|low|medium|high`、`--prompts <dir>`、`--profile <name>`、`--watch`、`--max-turns N`、`--cwd <dir>`。打印模式退出码：0 完成、1 错误/轮次预算耗尽、2 参数错误、130 中断。
 
-交互支持 `"""` 分隔的多行输入、运行中排队输入、Ctrl+C 中断、空闲时双按 Ctrl+C 退出。命令包括 `/help /model /compact /clear /cost /session /memory /exit`。工具输出与编辑 diff 追加显示，非 TTY 或 `NO_COLOR` 时无 ANSI 转义。
+交互支持 `"""` 分隔的多行输入、运行中排队输入、Ctrl+C 中断、空闲时双按 Ctrl+C 退出。命令包括 `/help /model /compact /clear /cost /session /memory /exit`；启用 runtime 后，可用 `/profile /reload /plugins` 管理组合与版本。工具输出与编辑 diff 追加显示，非 TTY 或 `NO_COLOR` 时无 ANSI 转义。
 
 ## 配置与权限
 
@@ -140,7 +144,7 @@ flowchart TD
 
 一次“轮次”指一次主循环中的模型调用。交互模式默认不设轮数上限，打印模式默认 50 轮，评测任务默认 30 轮；可用 `--max-turns` 调整支持该参数的运行模式。
 
-### 为什么只提供四个工具
+### 默认四工具怎样构成执行底座
 
 四个工具分别覆盖阅读、创建、修改和执行。搜索文件、查看 Git 状态、运行测试等工作交给 shell 和项目已有命令，保持接口简单。
 
@@ -225,7 +229,7 @@ Dream 只有 read/write/edit 工具，写入只允许记忆目录，不能修改
 
 这是一套“历史会话 → 笔记 → 索引 → 下次按需读取”的工作方式，不涉及模型训练或向量数据库。笔记是否正确仍需要按实际项目情况核对。
 
-## 评测与改进
+## 自进化：候选、评测与采用
 
 修改提示词后，不能只看回复是否流畅，还要看任务有没有完成。项目自带 8 个纯 Node 种子任务：5 个 dev 用于分析和调整，3 个 heldout 留作独立检验。
 
@@ -256,21 +260,23 @@ node src/cli/main.ts evolve --provider anthropic --model step-5-preview --rounds
 
 Evolve 先运行 dev 基线，再生成少量独立候选，用相同任务比较父子版本。入围者与原始基线重新做一轮 dev 确认，通过后才进行最终 heldout 审计。退化、执行故障、无效 judge 或不可比较的实验不能被推荐。报告分别记录 actor、优化器和 judge 消耗；用量缺失时保留为未知。开发数据仍同时用于搜索和选优，需要更多独立任务才能评估泛化。
 
-结果写入 `evals/runs/<experiment>/report.md`；默认提示词保持原样，确认采用时显式使用报告中的候选目录。`--variant` 可指定起始版本，`--optimizer-model` 可单独指定优化模型。可以沿[第九章教程](docs/learn/09-prompt-evolution.md)学习实现，再查看 [Step 与 Kimi 的真实验证报告](docs/reports/prompt-evolution-validation.md)及公开逐次证据。完整机制与实施验收见[提示词自进化设计](docs/prompt-evolution-design.md)和[实施计划](docs/prompt-evolution-plan.md)。
+结果写入 `evals/runs/<experiment>/report.md`；默认提示词保持原样。`--variant` 可指定起始版本，`--optimizer-model` 可单独指定优化模型。`recommend` 或 `unchanged` 会输出 `prompt-artifact.json`，将该清单显式设为目标 profile 的 `promptArtifact` 后 reload，宿主核对整体和逐文件 hash，再在下一次 run 生效。
+
+学习实现见[第十一章](docs/learn/11-prompt-evolution.md)，离线完整示例见[evolution.ts](docs/learn/examples/evolution.ts)。[设计说明](docs/prompt-evolution-design.md)解释候选与评分的边界；[真实验收](docs/reports/pluggable-runtime-validation.md)展示 Step 的受控基线 0/2、候选在 dev/确认/heldout 各 2/2，以及采用后的新任务检查。受控缺陷修复不代表默认提示词获得提升。
 
 ## 源码设计
 
 代码按职责分层，应用层负责把它们接起来。这样修改终端显示时不必碰模型协议，增加检查时也不必改核心循环。
 
-| 层级 | 目录                                                      | 职责                                            |
-| ---- | --------------------------------------------------------- | ----------------------------------------------- |
-| 0    | `src/util/`                                               | 路径、进程、截断、模板等基础能力                |
-| 1    | `src/ai/`                                                 | 模型接口、流式解析、用量与错误处理              |
-| 2    | `src/agent/`、`src/session/`                              | agent 循环；会话保存与恢复                      |
-| 3    | `src/tools/`、`src/context/`、`src/memory/`、`src/hooks/` | 工具、上下文、记忆和检查，各自独立              |
-| 4    | `src/app/`                                                | 组装运行配置，提供普通任务、Ralph、dream 等入口 |
-| 5    | `src/eval/`                                               | 任务运行、评分、失败分析和比较                  |
-| 6    | `src/cli/`                                                | 参数、交互和终端输出                            |
+| 层级 | 目录                                                      | 职责                                           |
+| ---- | --------------------------------------------------------- | ---------------------------------------------- |
+| 0    | `src/util/`                                               | 路径、进程、截断、模板等基础能力               |
+| 1    | `src/ai/`                                                 | 模型接口、流式解析、用量与错误处理             |
+| 2    | `src/agent/`、`src/session/`                              | agent 循环；会话保存与恢复                     |
+| 3    | `src/tools/`、`src/context/`、`src/memory/`、`src/hooks/` | 工具、上下文、记忆和检查，各自独立             |
+| 4    | `src/app/`                                                | profile、插件 worker、版本快照、任务与维护入口 |
+| 5    | `src/eval/`                                               | 评测、失败分析、优化器、gate、审计和版本产物   |
+| 6    | `src/cli/`                                                | 参数、交互和终端输出                           |
 
 模块只能依赖更低层或同目录文件，同层的不同目录不能相互引用。`agent/` 和 `ai/` 不直接操作文件、子进程或终端；`ai/` 通过 fetch 请求模型。只有 `cli/` 输出到终端。`cwd` 和 `home` 显式传递，禁止 `process.chdir`，让多个评测任务可以并发运行而不互相改变目录和数据位置。这些约束由 `scripts/check-layers.ts` 自动检查。
 
@@ -296,7 +302,7 @@ Evolve 先运行 dev 基线，再生成少量独立候选，用相同任务比�
 3. 项目记忆索引及笔记位置。
 4. 当前目录、系统、日期、shell 和 Git 分支。
 
-这些内容在同一个会话对象中保持稳定，减少每轮重复变化的背景；日期只精确到天。新会话和重新启动后的续接会重新组装，所以更新项目说明或记忆后，需要新的会话实例才能刷新这部分内容。提示词是独立文件，可用 `--prompts <dir>` 指定副本进行试验。
+稳定背景按会话与运行版本缓存，日期只精确到天。启用 runtime 后，reload 会读取新的 prompt、项目说明和静态记忆索引，准备完整快照，在下一次 run 一起生效；当前 run 和 steering 输入继续原版本。未启用 runtime 时沿用会话对象冻结行为。`file-recall` 和插件检索通过临时 system 后缀提供动态内容。提示词可用 `--prompts <dir>` 或 profile 的版本产物显式选择。
 
 ### Windows 与中断处理
 
@@ -359,4 +365,13 @@ v1 暂不包含 MCP、全屏 TUI、原生子 agent 工具、后台任务服务�
 | Birgitta Böckeler：[Harness engineering for coding agent users](https://martinfowler.com/articles/harness-engineering.html)                                                                                                            | 用事前说明指导行为，用事后检查发现偏差；对应项目说明与 hooks 的配合                          |
 | Stripe：[Minions: Stripe’s one-shot, end-to-end coding agents](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents) · [Part 2](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents-part-2) | 把模型执行与确定性检查交替安排，限制修复次数；对应有预算的检查反馈                           |
 
-补充阅读：Anthropic 的 [How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) 提供了工具改进、执行记录和评测方面的参考；[Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) 和 [Code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) 展示了更多工具组织方式。mini-harness v1 没有实现这些资料中的多 agent 编排、工具搜索或 MCP 集成。
+运行组合与版本设计还参考了以下开源实现的职责划分；项目使用自己的小型 TypeScript 契约，没有整体引入这些框架：
+
+| 资料                                                                                                                                                                  | 对应取舍                                         |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| [Qwen Code 扩展刷新设计](https://github.com/QwenLM/qwen-code/blob/41ffb223448847b4c8ea2a1e9b463650095b2890/docs/design/extension-file-reload.md)                      | 区分内容变化与完整配置变化，统一重载入口         |
+| [Gemini CLI ExtensionLoader](https://github.com/google-gemini/gemini-cli/blob/1930f25394c4b6338b64ffdb43083fca41614798/packages/core/src/utils/extensionLoader.ts)    | 扩展启停与批量刷新，减少重复重建背景             |
+| [DeerFlow Runtime Model](https://github.com/bytedance/deer-flow/blob/99e395aa9cdc369e8c80b164be4baa543619d8a8/frontend/src/content/en/harness/extensions/runtime.mdx) | 一次运行绑定同代不可变扩展快照与明确的状态作用域 |
+| [Microsoft Context Providers](https://learn.microsoft.com/en-us/agent-framework/concepts/agents/conversations/context-providers)                                      | 将上下文提供、记忆召回与后处理拆成独立职责       |
+
+补充阅读：Anthropic 的 [How we built our multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) 提供了工具改进、执行记录和评测方面的参考；[Introducing advanced tool use](https://www.anthropic.com/engineering/advanced-tool-use) 和 [Code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp) 展示了更多工具组织方式。本项目没有实现这些资料中的多 agent 编排、工具搜索或 MCP 集成。

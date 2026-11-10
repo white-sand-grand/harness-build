@@ -1,6 +1,6 @@
-# 08 · 用任务结果检验设计与改进
+# 10 · 用任务结果检验设计与改进
 
-[学习路线](README.md) · 上一章：[项目记忆](07-memory.md) · 下一章：[提示词自进化](09-prompt-evolution.md)
+[学习路线](README.md) · 上一章：[版本快照与热加载](09-runtime.md) · 下一章：[提示词自进化与采用](11-prompt-evolution.md)
 
 前面各章的测试回答“程序在给定条件下是否按设计行动”。评测再问一个问题：“模型使用这套程序后，有没有把任务做成？”
 
@@ -13,6 +13,8 @@
 解释类任务可以加模型评分，即 judge。它根据任务、评分标准、代码 diff 和最终回复返回分数、是否通过及理由。配置了 judge 时，命令检查与评分都要通过；评分失败或无法解析也会让该次任务失败。
 
 ## 一次尝试如何保持独立
+
+使用 runtime 时，整个实验先取得固定快照，每个 attempt 再从其中已授权的源码副本创建自己的 worker。这样 profile 与插件实现保持不变，模块级计数或缓存也不会从基线串入候选。[provenance](../../src/eval/provenance.ts) 将非提示词组合与插件指纹纳入实验合同，基础 prompt hash 单独标识变体。
 
 ```text
 复制任务文件到独立工作区
@@ -103,4 +105,4 @@ node src/cli/main.ts eval compare <baseline-run> <candidate-run>
 
 返回[学习路线与系统组装图](README.md)。原始参考资料见[项目 README 文末](../../README.md#参考资料与借鉴)。
 
-下一章：[将候选生成、回归和采用判断接成有预算的提示词优化循环](09-prompt-evolution.md)。
+下一章：[将候选生成、回归和版本采用接成自进化闭环](11-prompt-evolution.md)。
