@@ -136,9 +136,11 @@ export function buildOpenAIBody(req: ModelRequest, useNativeCache = nativeCache(
 export class OpenAIProvider implements Provider {
   readonly id = 'openai';
   private retrySleep?: Sleep;
+  #apiKey?: string;
   private incompatibleCache = new Set<string>();
-  constructor(opts: { sleep?: Sleep } = {}) {
+  constructor(opts: { sleep?: Sleep; apiKey?: string } = {}) {
     this.retrySleep = opts.sleep;
+    this.#apiKey = opts.apiKey;
   }
   async stream(req: ModelRequest, signal: AbortSignal, onEvent: (e: StreamEvent) => void): Promise<AssistantMessage> {
     const result = emptyAssistant(req, this.id),
@@ -150,6 +152,7 @@ export class OpenAIProvider implements Provider {
     result.cache = { readReported: false, writeReported: false };
     let seen = false,
       terminal = false;
+    const redact = (text: string) => (this.#apiKey ? text.replaceAll(this.#apiKey, '[redacted]') : text);
     const announce = (item: ResponseItem) => {
       if (item.type === 'function_call' && item.call_id && item.name && !announced.has(item.call_id)) {
         announced.add(item.call_id);
@@ -158,7 +161,7 @@ export class OpenAIProvider implements Provider {
     };
     try {
       const env = req.model.apiKeyEnv ?? 'OPENAI_API_KEY',
-        key = process.env[env];
+        key = this.#apiKey || process.env[env];
       if (!key) throw new Error(`Missing API key. Set ${env} (for a local server, a placeholder value is sufficient).`);
       const url = endpoint(
         req.model.baseUrl ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
@@ -180,7 +183,7 @@ export class OpenAIProvider implements Provider {
             if (response.ok) break;
             const error = new HTTPError(
               response.status,
-              await response.text(),
+              redact(await response.text()),
               response.headers.get('retry-after') ?? undefined,
             );
             if (
@@ -273,7 +276,7 @@ export class OpenAIProvider implements Provider {
       );
     } catch (error) {
       result.stopReason = signal.aborted ? 'aborted' : 'error';
-      if (!signal.aborted) result.errorMessage = errorText(error);
+      if (!signal.aborted) result.errorMessage = redact(errorText(error));
     }
     for (const [index, item] of [...items].sort(([a], [b]) => a - b)) {
       if (item.type === 'message') {

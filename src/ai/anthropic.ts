@@ -4,7 +4,14 @@ import { withRetry, type Sleep } from './retry.ts';
 import { parseSSE } from './sse.ts';
 import { emptyAssistant, endpoint, parseArgs } from './shared.ts';
 type WireBlock = Record<string, unknown>;
-export function buildAnthropicBody(req: ModelRequest) {
+export function buildAnthropicBody(req: ModelRequest, resolvedBaseUrl?: string) {
+  let stepEndpoint = false;
+  try {
+    stepEndpoint =
+      new URL(resolvedBaseUrl ?? req.model.baseUrl ?? 'https://api.anthropic.com').hostname === 'api.stepfun.com';
+  } catch {
+    // Invalid addresses retain the ordinary mapping and fail when the request is sent.
+  }
   const image = (b: { mediaType: string; data: string }) => ({
     type: 'image',
     source: { type: 'base64', media_type: b.mediaType, data: b.data },
@@ -49,7 +56,8 @@ export function buildAnthropicBody(req: ModelRequest) {
     input_schema: t.parameters,
     ...(i === req.tools.length - 1 ? { cache_control: { type: 'ephemeral' } } : {}),
   }));
-  const budget = { off: 0, low: 2048, medium: 8192, high: 24576 }[req.thinking ?? 'off'];
+  const level = req.thinking ?? 'off';
+  const budget = stepEndpoint ? 0 : { off: 0, low: 2048, medium: 8192, high: 24576 }[level];
   return {
     model: req.model.id,
     max_tokens: Math.max(req.maxOutputTokens ?? req.model.maxOutputTokens, budget ? budget + 1024 : 1),
@@ -58,6 +66,7 @@ export function buildAnthropicBody(req: ModelRequest) {
     messages,
     stream: true,
     ...(budget && req.model.supportsThinking ? { thinking: { type: 'enabled', budget_tokens: budget } } : {}),
+    ...(stepEndpoint && level !== 'off' && req.model.supportsThinking ? { output_config: { effort: level } } : {}),
   };
 }
 type WireUsage = {
@@ -94,9 +103,11 @@ export class AnthropicProvider implements Provider {
   readonly id = 'anthropic';
   private retrySleep?: Sleep;
   #apiKey?: string;
-  constructor(opts: { sleep?: Sleep; apiKey?: string } = {}) {
+  #authToken?: string;
+  constructor(opts: { sleep?: Sleep; apiKey?: string; authToken?: string } = {}) {
     this.retrySleep = opts.sleep;
     this.#apiKey = opts.apiKey;
+    this.#authToken = opts.authToken;
   }
   async stream(req: ModelRequest, signal: AbortSignal, onEvent: (e: StreamEvent) => void): Promise<AssistantMessage> {
     const result = emptyAssistant(req, this.id);
@@ -117,34 +128,38 @@ export class AnthropicProvider implements Provider {
     }
     let seen = false;
     let complete = false;
+    const credentials = [this.#apiKey, this.#authToken]
+      .filter((value): value is string => !!value)
+      .sort((left, right) => right.length - left.length);
+    const redact = (text: string) => {
+      for (const credential of credentials) text = text.replaceAll(credential, '[redacted]');
+      return text;
+    };
     try {
       const env = req.model.apiKeyEnv;
-      const key = this.#apiKey || (env ? process.env[env] : undefined) || process.env.ANTHROPIC_API_KEY;
-      const bearer = key ? undefined : process.env.ANTHROPIC_AUTH_TOKEN;
+      const key =
+        this.#apiKey ||
+        (this.#authToken ? undefined : (env ? process.env[env] : undefined) || process.env.ANTHROPIC_API_KEY);
+      const bearer = key ? undefined : this.#authToken || process.env.ANTHROPIC_AUTH_TOKEN;
       if (!key && !bearer)
         throw new Error(`Missing API key. Set ${env ?? 'ANTHROPIC_API_KEY'} or ANTHROPIC_AUTH_TOKEN.`);
+      const baseUrl = req.model.baseUrl ?? process.env.ANTHROPIC_BASE_URL ?? 'https://api.anthropic.com';
       await withRetry(
         async () => {
-          const response = await fetch(
-            endpoint(
-              req.model.baseUrl ?? process.env.ANTHROPIC_BASE_URL ?? 'https://api.anthropic.com',
-              '/v1/messages',
-            ),
-            {
-              method: 'POST',
-              signal,
-              headers: {
-                'content-type': 'application/json',
-                'anthropic-version': '2023-06-01',
-                ...(key ? { 'x-api-key': key } : { authorization: `Bearer ${bearer}` }),
-              },
-              body: JSON.stringify(buildAnthropicBody(req)),
+          const response = await fetch(endpoint(baseUrl, '/v1/messages'), {
+            method: 'POST',
+            signal,
+            headers: {
+              'content-type': 'application/json',
+              'anthropic-version': '2023-06-01',
+              ...(key ? { 'x-api-key': key } : { authorization: `Bearer ${bearer}` }),
             },
-          );
+            body: JSON.stringify(buildAnthropicBody(req, baseUrl)),
+          });
           if (!response.ok)
             throw new HTTPError(
               response.status,
-              await response.text(),
+              redact(await response.text()),
               response.headers.get('retry-after') ?? undefined,
             );
           if (!response.body) throw new Error('API returned an empty response body.');
@@ -200,7 +215,7 @@ export class AnthropicProvider implements Provider {
       );
     } catch (error) {
       result.stopReason = signal.aborted ? 'aborted' : 'error';
-      if (!signal.aborted) result.errorMessage = errorText(error);
+      if (!signal.aborted) result.errorMessage = redact(errorText(error));
     }
     result.content = [...blocks.entries()].sort(([a], [b]) => a - b).map(([, b]) => b);
     return result;

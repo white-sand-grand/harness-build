@@ -1,0 +1,71 @@
+{
+  "name": "mini-harness-desktop",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/main/index.js",
+  "description": "A local coding agent workspace powered by mini-harness",
+  "author": "mini-harness contributors",
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "scripts": {
+    "dev": "pnpm build && electron .",
+    "start": "electron .",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build.mjs",
+    "test": "node --import ../test/helpers/setup.ts --test test/*.test.ts",
+    "test:job": "node test/job-guard.mjs",
+    "test:gui": "node test/gui.mjs",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "package": "pnpm build && node scripts/package.mjs --dir",
+    "dist": "pnpm build && node scripts/package.mjs --win nsis",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "electron": "45.3.0",
+    "electron-builder": "26.18.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tsup": "9.0.0",
+    "typescript": "^7.0.2",
+    "vite": "8.3.8"
+  },
+  "build": {
+    "appId": "dev.mini-harness.desktop",
+    "productName": "mini-harness",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "asar": false,
+    "electronDist": "node_modules/electron/dist",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "signExecutable": false,
+      "icon": "assets/moon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": false,
+      "packElevateHelper": false,
+      "createDesktopShortcut": true,
+      "artifactName": "mini-harness-${version}-win-x64-setup.${ext}"
+    }
+  }
+}

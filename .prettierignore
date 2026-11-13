@@ -6,3 +6,7 @@ test/fixtures/
 evals/tasks/**/files/
 dist/
 pnpm-lock.yaml
+desktop/pnpm-lock.yaml
+desktop/dist/
+desktop/release/
+desktop/.cache/

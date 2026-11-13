@@ -6,7 +6,9 @@
 
 模型权重、评分标准和工具实现保持固定，自动优化的对象是系统提示及实际启用的内置工具说明。工具、上下文、记忆、提示词片段和 hooks 可通过 profile 组合；版本按完整运行切换。任务执行由纯内核负责，候选选择与采用由外层控制。
 
-项目使用 TypeScript 和 Node ≥ 24，零运行时依赖，支持 Linux、macOS、WSL 和原生 Windows。模型接口支持 Anthropic Messages 和 **OpenAI Responses（`/v1/responses`）**；OpenAI 适配器只使用 Responses。
+核心使用 TypeScript 和 Node ≥ 24，零运行时依赖，支持 Linux、macOS、WSL 和原生 Windows；可选的Windows桌面包独立使用Electron/React。模型接口支持 Anthropic Messages 和 **OpenAI Responses（`/v1/responses`）**；OpenAI 适配器只使用 Responses。
+
+[桌面工作台](docs/desktop.md)提供项目与会话、真实任务执行、模型/思考深度、审批/取消和当前Git变更审阅。源码位于`desktop/`，依赖与构建独立于核心；安装和验证方法见使用说明。
 
 ## 学习主线：从执行到进化
 
