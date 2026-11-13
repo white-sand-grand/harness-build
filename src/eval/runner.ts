@@ -114,7 +114,8 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
       runtimeSnapshot: opts.runtimeSnapshot,
     }),
   };
-  writeFileSync(join(dir, 'run.json'), JSON.stringify(manifest, null, 2) + '\n');
+  const manifestJson = JSON.stringify(manifest, null, 2) + '\n';
+  writeFileSync(join(dir, 'run.json'), manifestJson);
   const jobs = tasks.flatMap((task) => Array.from({ length: repeat }, (_, i) => ({ task, attempt: i + 1 }))),
     results: AttemptResult[] = [];
   let next = 0;
@@ -312,6 +313,20 @@ export async function runEval(opts: EvalOptions): Promise<AttemptResult[]> {
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, () => worker()));
+  // The evaluated agent's shell is not path-restricted; verify the on-disk records still match
+  // what this run produced so a tampered results file can never reach the gate.
+  const written = readFileSync(join(dir, 'results.jsonl'), 'utf8')
+      .split('\n')
+      .filter((line) => line.trim()),
+    expected = results.map((r) => JSON.stringify(r));
+  if (
+    written.length !== expected.length ||
+    written.some((line, i) => line !== expected[i]) ||
+    readFileSync(join(dir, 'run.json'), 'utf8') !== manifestJson
+  )
+    throw new Error(
+      'Evaluation results were modified during the run; the run is discarded. The evaluated agent must not write to evaluation files.',
+    );
   results.sort((a, b) => a.taskId.localeCompare(b.taskId) || a.attempt - b.attempt);
   writeFileSync(join(dir, 'summary.md'), renderSummary(results, tasks));
   return results;

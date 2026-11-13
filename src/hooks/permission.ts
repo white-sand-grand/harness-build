@@ -21,28 +21,51 @@ export function riskyCategory(command: string, extra: RegExp[] = []): string | u
   if (
     (/(?:^|\s)-(?:[a-z]*r[a-z]*)(?:\s|$|")|--recursive\b/i.test(rm) &&
       /(?:^|\s)-(?:[a-z]*f[a-z]*)(?:\s|$|")|--force\b/i.test(rm)) ||
-    /\b(?:Remove-Item|del|ri|rm)\b(?=[^;\n]*-Recurse\b)(?=[^;\n]*-Force\b)/i.test(command)
+    /\b(?:Remove-Item|del|ri|rm)\b(?=[^;\n]*-Recurse\b)(?=[^;\n]*-Force\b)/i.test(command) ||
+    /\b(?:Remove-Item|ri)\b(?=[^;\n]*\s-r(?:\s|$))(?=[^;\n]*\s-fo(?:rce)?(?:\s|$))/i.test(command) ||
+    /\bdel\b(?=[^;\n]*\/s\b)(?=[^;\n]*\/q\b)/i.test(command) ||
+    /\brmdir\b[^;\n]*\/s\b/i.test(command) ||
+    /\brimraf\b/i.test(command) ||
+    /\bfind\b[^;\n]*\s-delete\b/i.test(command) ||
+    /\bshred\b/i.test(command) ||
+    /\btruncate\b\s+-s\s+0\b/i.test(command)
   )
     return 'recursive delete';
   if (
-    /\bgit\b[^;\n]*\b(?:push\b[^;\n]*(?:--force(?:-with-lease)?\b|\s-f\b)|reset\s+--hard\b|clean\s+-[a-z]*f|checkout\s+--\s+\.(?:\s|$)|branch\s+-D\b)/.test(
+    /\bgit\b[^;\n]*\b(?:push\b[^;\n]*(?:--force(?:-with-lease)?\b|\s-f\b|\s\+[\w./~-]+|--delete\b|--mirror\b)|reset\s+--hard\b|clean\s+(?:-[a-z]*f|--force)|checkout\s+(?:--\s+\.(?:\s|$)|-f\b|--force\b)|restore\b[^;\n]*\s(?:\.(?:\s|$)|:(?:\s|$)|:\/)|branch\s+-D\b)/.test(
       command,
     )
   )
     return 'git history';
   if (
     /\b(?:curl|wget)\b[^;\n]*\|\s*(?:ba|da|z)?sh\b/i.test(command) ||
+    /\b(?:curl|wget)\b[^;\n]*\|\s*(?:python(?:3)?|node|perl|ruby|php)\b/i.test(command) ||
     (/\b(?:iwr|irm|Invoke-WebRequest|Invoke-RestMethod)\b/i.test(command) &&
-      /\b(?:iex|Invoke-Expression)\b/i.test(command))
+      /\b(?:iex|Invoke-Expression)\b/i.test(command)) ||
+    /\b(?:ba|z)?sh\b\s*<\s*\(\s*(?:curl|wget)\b/i.test(command)
   )
     return 'remote script';
   if (
-    /\b(?:mkfs(?:\.\w+)?|shutdown|reboot|Format-Volume|Clear-Disk|Initialize-Disk)\b|\bdd\b[^;\n]*\bof=\/dev\/|>\s*\/dev\/sd/i.test(
+    /\b(?:curl|wget)\b[^;\n]*(?:--data(?:-binary|-raw|-urlencode)?\s*(?:'|"|\s)*@|-d\s*(?:'|"|\s)*@|--form\s+[^;\s]*@|-F\s+[^;\s]*@|--upload-file\s+\S+|-T\s+\S+|--post-file=\S+)/i.test(
+      command,
+    ) ||
+    /(?:^|[;|&]\s*)(?:cat|head|tail|base64)\b[^;\n|]*\|\s*(?:curl|wget)\b/i.test(command) ||
+    /\bscp\b[^;\n]*\s\S+@\S+:/i.test(command)
+  )
+    return 'exfiltration';
+  if (/\b(?:npm|pnpm|yarn|bun)\s+(?:install|i|add)\b|\b(?:npx|bunx)\b|\b(?:pnpm|yarn)\s+dlx\b/i.test(command))
+    return 'install';
+  if (
+    /\b(?:mkfs(?:\.\w+)?|shutdown|reboot|Format-Volume|Clear-Disk|Initialize-Disk)\b|\bdd\b[^;\n]*\bof=\/dev\/|>\s*\/dev\/sd|\bformat\s+[a-z]:\b/i.test(
       command,
     )
   )
     return 'disk/system';
-  if (/\bsudo\s|\bchmod\s+-[a-z]*R\b[^;\n]*777|\bchown\s+-[a-z]*R\b/i.test(command)) return 'privilege';
+  if (
+    /\bsudo\s|\bchmod\s+-[a-z]*R\b[^;\n]*777|\bchown\s+-[a-z]*R\b/i.test(command) ||
+    /\b(?:schtasks\s+\/?create|reg\s+add\b|runas\b|Start-Process\b[^;\n]*-Verb\s+RunAs)\b/i.test(command)
+  )
+    return 'privilege';
   if (/\b(?:npm|pnpm)\s+publish\b|\bdocker\s+push\b/i.test(command)) return 'publish';
   if (
     extra.some((re) => {
@@ -63,6 +86,8 @@ export function permissionHook(opts: {
   strictWriteRoots?: string[];
   strictReadRoots?: string[];
   strictWritePaths?: string[];
+  /** Paths tools must never write, even in yolo mode: harness-managed files such as the session transcript. */
+  deniedPaths?: string[];
   approvals?: Set<string>;
 }): Hooks {
   const approved = opts.approvals ?? new Set<string>();
@@ -107,6 +132,12 @@ export function permissionHook(opts: {
       if (call.name === 'write' || call.name === 'edit') {
         const path = resolvePath(opts.cwd ?? opts.root, String(call.args.path));
         const target = realPath(path);
+        if (opts.deniedPaths?.some((denied) => isWithin(realPath(denied), target)))
+          return {
+            action: 'deny',
+            reason:
+              'Blocked: this file is harness-managed (the session transcript) and cannot be edited by tools. Never recreate or modify it.',
+          };
         if (
           opts.strictWritePaths &&
           (hasSymlink(path) ||

@@ -233,3 +233,47 @@ test('beforeModel replacement replaces messages in place and emits contextReplac
   assert.equal(r.messages.length, 2);
   assert.ok(r.events.some((e) => e.type === 'contextReplaced'));
 });
+
+test('deeply nested tool arguments are rejected instead of crashing the transcript write', async () => {
+  let deep: Record<string, unknown> = { path: 'x' };
+  for (let i = 0; i < 5000; i++) deep = { path: 'x', nested: deep };
+  let called = false;
+  const deepProvider: Provider = {
+    id: 'anthropic',
+    async stream() {
+      if (!called) {
+        called = true;
+        return {
+          role: 'assistant',
+          content: [{ type: 'toolCall', id: 't1', name: 'read', args: deep }],
+          stopReason: 'toolUse',
+          usage: zeroUsage(),
+          model: 'test',
+          provider: 'anthropic',
+        };
+      }
+      return {
+        role: 'assistant',
+        content: [{ type: 'text', text: 'ok' }],
+        stopReason: 'end',
+        usage: zeroUsage(),
+        model: 'test',
+        provider: 'anthropic',
+      };
+    },
+  };
+  const r = await run(cfg(deepProvider));
+  assert.equal(r.reason, 'done');
+  assert.match(JSON.stringify(r.messages), /nesting depth|unknown property/);
+});
+test('repeated maxTokens continuations terminate the run', async () => {
+  const p = scripted(
+    { text: 'part1', stopReason: 'maxTokens' },
+    { text: 'part2', stopReason: 'maxTokens' },
+    { text: 'part3', stopReason: 'maxTokens' },
+    { text: 'part4', stopReason: 'maxTokens' },
+  );
+  const r = await run(cfg(p));
+  assert.equal(r.reason, 'maxTurns');
+  assert.match(JSON.stringify(r.events), /token limit/);
+});

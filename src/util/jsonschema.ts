@@ -10,6 +10,9 @@ export type JsonSchema = {
   maximum?: number;
 };
 
+/** Deeply nested hostile values otherwise produce error paths that themselves blow up the context. */
+const showPath = (path: string): string => (path.length > 200 ? path.slice(0, 200) + '…' : path);
+
 export function validateSchema(schema: JsonSchema, value: unknown, path = ''): string[] {
   const errors: string[] = [];
   const at = path ? `property "${path}"` : 'value';
@@ -31,11 +34,12 @@ export function validateSchema(schema: JsonSchema, value: unknown, path = ''): s
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     const obj = value as Record<string, unknown>;
     for (const key of schema.required ?? [])
-      if (!Object.hasOwn(obj, key)) errors.push(`missing required property "${path ? path + '.' : ''}${key}"`);
+      if (!Object.hasOwn(obj, key))
+        errors.push(`missing required property "${path ? showPath(path) + '.' : ''}${key}"`);
     for (const [key, entry] of Object.entries(obj)) {
       const name = path ? `${path}.${key}` : key;
       if (schema.properties?.[key]) errors.push(...validateSchema(schema.properties[key], entry, name));
-      else if (schema.additionalProperties === false) errors.push(`unknown property "${name}"`);
+      else if (schema.additionalProperties === false) errors.push(`unknown property "${showPath(name)}"`);
     }
   }
   if (Array.isArray(value) && schema.items)

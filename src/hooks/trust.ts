@@ -24,12 +24,12 @@ function trusted(home: string): Record<string, string[]> {
     throw new Error(`Invalid trust store: ${path}`);
   }
 }
-export const isProjectTrusted = (home: string, root: string, hooks: unknown) =>
-  trusted(home)[resolve(root)]?.includes(trustHash(hooks)) ?? false;
-export function trustProjectHooks(home: string, root: string, hooks: unknown) {
+export const isProjectTrusted = (home: string, root: string, value: unknown) =>
+  trusted(home)[resolve(root)]?.includes(trustHash(value)) ?? false;
+export function trustProjectHooks(home: string, root: string, value: unknown) {
   const data = trusted(home),
     key = resolve(root);
-  data[key] = [...new Set([...(data[key] ?? []), trustHash(hooks)])];
+  data[key] = [...new Set([...(data[key] ?? []), trustHash(value)])];
   mkdirSync(home, { recursive: true });
   writeFileSync(join(home, 'trusted.json'), JSON.stringify(data, null, 2) + '\n');
 }

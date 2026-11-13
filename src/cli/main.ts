@@ -2,17 +2,20 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadConfig, untrustedProjectHooks, type Config } from '../app/config.ts';
+import { loadConfig, readProjectSensitive, type Config } from '../app/config.ts';
 import { createInterface } from 'node:readline';
 import { startRun } from '../app/run.ts';
 import { listSessions, openSession } from '../session/index.ts';
 import { parseCLI, help } from './args.ts';
-import { renderJSON } from './render.ts';
+import { renderJSON, stripEscapes } from './render.ts';
 import { runREPL } from './repl.ts';
 import { handleCommand } from './commands.ts';
 import { createRuntime, type RuntimeManager } from '../app/runtime.ts';
 import type { Asker } from '../hooks/permission.ts';
 import { createAsker } from './ask.ts';
+// On Windows a bare executable name also resolves against the current directory; a planted
+// git.exe/taskkill.exe in a repo would otherwise hijack harness-internal process launches.
+process.env.NoDefaultCurrentDirectoryInExePath ??= '1';
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   let args: ReturnType<typeof parseCLI>;
   try {
@@ -43,22 +46,27 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       ...(v.watch !== undefined ? { watch: v.watch } : {}),
     };
   if (v.yolo) overrides.permissions = { mode: 'yolo', extraRiskyPatterns: [] };
+  const projectSensitive = readProjectSensitive(cwd);
   let trustProject = v['trust-project'];
-  if (!trustProject && process.stdin.isTTY) {
-    const pending = untrustedProjectHooks(home, cwd);
-    if (pending) {
-      const rl = createInterface({ input: process.stdin, output: process.stderr });
-      const answer = await new Promise<string>((resolve) =>
-        rl.question(
-          `Trust this project's hook commands?\n${JSON.stringify(pending, null, 2)}\nStore trust for this exact configuration? [y/N] `,
-          resolve,
-        ),
-      );
-      rl.close();
-      trustProject = answer.trim().toLowerCase() === 'y';
-    }
+  if (!trustProject && process.stdin.isTTY && projectSensitive && Object.keys(projectSensitive.sensitive).length) {
+    const rl = createInterface({ input: process.stdin, output: process.stderr });
+    const answer = await new Promise<string>((resolve) =>
+      rl.question(
+        `Trust this project's configuration (hooks, permissions, models, provider, prompts)?\n${JSON.stringify(projectSensitive.sensitive, null, 2)}\nStore trust for this exact configuration? [y/N] `,
+        resolve,
+      ),
+    );
+    rl.close();
+    trustProject = answer.trim().toLowerCase() === 'y';
   }
-  const config = loadConfig({ home, cwd, overrides, trustProject, warn: (s) => console.error(s) });
+  const config = loadConfig({
+    home,
+    cwd,
+    overrides,
+    trustProject,
+    warn: (s) => console.error(s),
+    projectData: projectSensitive?.data,
+  });
   const command = args.positionals[0];
   let runtime: RuntimeManager | undefined;
   let runtimeAsk: Asker | undefined = process.stdin.isTTY
@@ -90,7 +98,9 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     if (commandExit !== undefined) return commandExit;
     if (command === 'sessions') {
       const sessions = listSessions(home, cwd);
-      console.log(v.json ? JSON.stringify(sessions) : sessions.map((s) => `${s.id}  ${s.firstUserText}`).join('\n'));
+      console.log(
+        v.json ? JSON.stringify(sessions) : sessions.map((s) => `${s.id}  ${stripEscapes(s.firstUserText)}`).join('\n'),
+      );
       return 0;
     }
     const session = v.resume
@@ -155,10 +165,10 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         maxTurns: v['max-turns'] ? Number(v['max-turns']) : 50,
         onEvent: (e) => {
           if (v.json) process.stdout.write(renderJSON(e) + '\n');
-          else if (e.type === 'agentEnd' && e.error) console.error(e.error);
+          else if (e.type === 'agentEnd' && e.error) console.error(stripEscapes(e.error));
         },
       });
-      if (!v.json && result.finalText) console.log(result.finalText);
+      if (!v.json && result.finalText) console.log(stripEscapes(result.finalText));
       if (
         result.session
           .entries()

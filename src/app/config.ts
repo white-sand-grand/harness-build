@@ -54,29 +54,43 @@ export function loadConfig(opts: {
   overrides?: Partial<Config>;
   trustProject?: boolean;
   warn?: (s: string) => void;
+  /** Pre-read project configuration snapshot; skips the second disk read so the reviewed data is the trusted data. */
+  projectData?: Partial<Config>;
 }): Config {
   let config = defaultConfig();
   const root = projectRoot(opts.cwd),
     projectPath = join(root, '.mh', 'config.json');
-  for (const path of [join(opts.home, 'config.json'), projectPath])
-    if (existsSync(path)) {
+  const projectProvided = opts.projectData !== undefined;
+  for (const path of [join(opts.home, 'config.json'), projectPath]) {
+    if (existsSync(path) || (path === projectPath && projectProvided)) {
       let data: Partial<Config>;
       try {
-        data = JSON.parse(readFileSync(path, 'utf8')) as Partial<Config>;
+        data =
+          path === projectPath && projectProvided
+            ? (opts.projectData as Partial<Config>)
+            : (JSON.parse(readFileSync(path, 'utf8')) as Partial<Config>);
       } catch (error) {
         throw new Error(`Invalid config ${path}: ${error instanceof Error ? error.message : String(error)}`);
       }
       validateConfig(data, path);
-      if (path === projectPath && data.hooks) {
-        if (opts.trustProject) trustProjectHooks(opts.home, root, data.hooks);
-        if (!isProjectTrusted(opts.home, root, data.hooks)) {
-          opts.warn?.('Project hooks ignored until trusted. Review them and use --trust-project to enable.');
-          data = { ...data };
-          delete data.hooks;
+      if (path === projectPath) {
+        // Plugin directories are NOT gated here: the runtime's plugin loader performs its own
+        // fingerprint + authorization flow before any plugin code runs.
+        const sensitive = sensitiveProjectSubset(data);
+        if (Object.keys(sensitive).length) {
+          if (opts.trustProject) trustProjectHooks(opts.home, root, sensitive);
+          if (!isProjectTrusted(opts.home, root, sensitive)) {
+            opts.warn?.(
+              'Sensitive project configuration (hooks, permissions, models, provider, prompts) ignored until trusted. Review it and use --trust-project to enable.',
+            );
+            data = { ...data };
+            for (const key of SENSITIVE_PROJECT_KEYS) delete data[key];
+          }
         }
       }
       config = mergeConfig(config, data);
     }
+  }
   validateConfig(opts.overrides ?? {}, 'CLI overrides');
   config = mergeConfig(config, opts.overrides ?? {});
   if (config.compaction.clearAtRatio > config.compaction.compactAtRatio)
@@ -89,11 +103,28 @@ export function loadConfig(opts: {
     }
   return config;
 }
-export function untrustedProjectHooks(home: string, cwd: string): unknown | undefined {
+const SENSITIVE_PROJECT_KEYS = ['hooks', 'permissions', 'models', 'model', 'provider', 'promptsDir'] as const;
+function sensitiveProjectSubset(data: Partial<Config>): Record<string, unknown> {
+  const subset: Record<string, unknown> = {};
+  for (const key of SENSITIVE_PROJECT_KEYS) if (data[key] !== undefined) subset[key] = data[key];
+  return subset;
+}
+/**
+ * Reads the project configuration exactly once so the CLI can show the user what would be
+ * trusted and pass the same snapshot to loadConfig (projectData) — no review/trust gap.
+ */
+export function readProjectSensitive(
+  cwd: string,
+): { root: string; data: Partial<Config>; sensitive: Record<string, unknown> } | undefined {
   const root = projectRoot(cwd),
     path = join(root, '.mh', 'config.json');
   if (!existsSync(path)) return undefined;
-  const data = JSON.parse(readFileSync(path, 'utf8')) as Partial<Config>;
+  let data: Partial<Config>;
+  try {
+    data = JSON.parse(readFileSync(path, 'utf8')) as Partial<Config>;
+  } catch (error) {
+    throw new Error(`Invalid config ${path}: ${error instanceof Error ? error.message : String(error)}`);
+  }
   validateConfig(data, path);
-  return data.hooks && !isProjectTrusted(home, root, data.hooks) ? data.hooks : undefined;
+  return { root, data, sensitive: sensitiveProjectSubset(data) };
 }

@@ -128,7 +128,14 @@ export class AnthropicProvider implements Provider {
     }
     let seen = false;
     let complete = false;
-    const credentials = [this.#apiKey, this.#authToken]
+    const env = req.model.apiKeyEnv;
+    const key =
+      this.#apiKey ||
+      (this.#authToken ? undefined : (env ? process.env[env] : undefined) || process.env.ANTHROPIC_API_KEY);
+    const bearer = key ? undefined : this.#authToken || process.env.ANTHROPIC_AUTH_TOKEN;
+    // Environment-resolved credentials leak into error bodies too (e.g. an echo proxy), so they
+    // participate in redaction alongside the instance-injected ones.
+    const credentials = [this.#apiKey, this.#authToken, key, bearer]
       .filter((value): value is string => !!value)
       .sort((left, right) => right.length - left.length);
     const redact = (text: string) => {
@@ -136,11 +143,6 @@ export class AnthropicProvider implements Provider {
       return text;
     };
     try {
-      const env = req.model.apiKeyEnv;
-      const key =
-        this.#apiKey ||
-        (this.#authToken ? undefined : (env ? process.env[env] : undefined) || process.env.ANTHROPIC_API_KEY);
-      const bearer = key ? undefined : this.#authToken || process.env.ANTHROPIC_AUTH_TOKEN;
       if (!key && !bearer)
         throw new Error(`Missing API key. Set ${env ?? 'ANTHROPIC_API_KEY'} or ANTHROPIC_AUTH_TOKEN.`);
       const baseUrl = req.model.baseUrl ?? process.env.ANTHROPIC_BASE_URL ?? 'https://api.anthropic.com';

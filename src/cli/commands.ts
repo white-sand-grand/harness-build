@@ -1,5 +1,6 @@
 import type { parseCLI } from './args.ts';
 import type { Config } from '../app/config.ts';
+import { stripEscapes } from './render.ts';
 import { runRalph } from '../app/ralph.ts';
 import { runDream } from '../app/dream.ts';
 import { memoryDir, readIndex, memoryUndo } from '../memory/index.ts';
@@ -138,10 +139,10 @@ export async function handleCommand(
     console.log(
       v.json
         ? JSON.stringify(r)
-        : `Analyze: ${r.reason}\n${r.analysis}\nVariant: ${r.variantDir}\n` +
+        : `Analyze: ${r.reason}\n${stripEscapes(r.analysis)}\nVariant: ${r.variantDir}\n` +
             (r.validation.valid
               ? `Next: mh eval run --variant "${r.variantDir}" --split all\nThen: mh eval compare "${resolve(rest[0])}" <new-run>`
-              : `No candidate is ready for adoption.\n${r.validation.errors.join('\n')}`),
+              : `No candidate is ready for adoption.\n${r.validation.errors.map(stripEscapes).join('\n')}`),
     );
     return r.reason === 'aborted'
       ? 130
@@ -193,7 +194,7 @@ export async function handleCommand(
       console.log(
         v.json
           ? JSON.stringify(r)
-          : `${r.dryRun ? 'Dry run\n' : ''}${r.diffStat || 'No memory changes.'}\n${r.finalText}\n${r.warnings.join('\n')}`,
+          : `${r.dryRun ? 'Dry run\n' : ''}${r.diffStat || 'No memory changes.'}\n${stripEscapes(r.finalText)}\n${r.warnings.map(stripEscapes).join('\n')}`,
       );
       return r.reason === 'done' ? 0 : r.reason === 'aborted' ? 130 : 1;
     } finally {
@@ -220,7 +221,7 @@ export async function handleCommand(
       console.log(
         v.json
           ? JSON.stringify(r)
-          : `Ralph: ${r.reason} after ${r.iterations} iteration(s)\nProgress: ${r.progressFile}\n${r.lastCheck?.output.slice(-3000) ?? ''}`,
+          : `Ralph: ${r.reason} after ${r.iterations} iteration(s)\nProgress: ${r.progressFile}\n${stripEscapes(r.lastCheck?.output.slice(-3000) ?? '')}`,
       );
       return r.reason === 'passed' ? 0 : r.reason === 'aborted' ? 130 : 1;
     } finally {

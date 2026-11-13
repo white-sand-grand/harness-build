@@ -1,3 +1,5 @@
+/** A single SSE event larger than this is hostile (unbounded buffer → OOM/CPU exhaustion); abort the stream. */
+const MAX_EVENT_CHARS = 2 * 1024 * 1024;
 export type SSEEvent = { event: string; data: string };
 export async function* parseSSE(body: ReadableStream<Uint8Array>, signal: AbortSignal): AsyncGenerator<SSEEvent> {
   const reader = body.getReader();
@@ -28,6 +30,9 @@ export async function* parseSSE(body: ReadableStream<Uint8Array>, signal: AbortS
         buffer = buffer.slice(boundary.index + boundary[0].length);
         if (next) yield next;
       }
+      // The scan above removes complete events; anything left here has no boundary yet.
+      if (buffer.length > MAX_EVENT_CHARS)
+        throw new Error(`SSE event exceeded the ${MAX_EVENT_CHARS} character buffer without a message boundary.`);
       if (done) {
         if (buffer) {
           const last = event(buffer);

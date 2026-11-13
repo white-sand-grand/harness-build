@@ -5,15 +5,22 @@ import { projectSlug } from '../util/paths.ts';
 import type { SessionEntry, SessionStore } from './types.ts';
 import { rebuild } from './rebuild.ts';
 const sessionsDir = (home: string, cwd: string) => join(home, 'projects', projectSlug(cwd), 'sessions');
+/** Guards against memory exhaustion from a tampered or corrupt transcript with a gigantic single line. */
+const MAX_ENTRY_CHARS = 32 * 1024 * 1024;
 function readEntries(file: string) {
-  const raw = readFileSync(file, 'utf8');
+  let raw = readFileSync(file, 'utf8');
+  if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
   const lines = raw.split('\n');
   if (lines.at(-1) === '') lines.pop();
   const entries: SessionEntry[] = [];
   let repaired = false;
   for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (!line.trim()) continue;
+    if (line.length > MAX_ENTRY_CHARS)
+      throw new Error(`Corrupt session ${file}, line ${i + 1}: entry exceeds ${MAX_ENTRY_CHARS} characters`);
     try {
-      const entry = JSON.parse(lines[i]!) as SessionEntry;
+      const entry = JSON.parse(line) as SessionEntry;
       if (!entry || typeof entry.type !== 'string' || typeof entry.id !== 'string')
         throw new Error('invalid entry shape');
       entries.push(entry);
@@ -77,22 +84,32 @@ export function listSessions(home: string, cwd: string): Array<{ id: string; fir
   if (!existsSync(root)) return [];
   return readdirSync(root, { withFileTypes: true })
     .filter((e) => e.isDirectory() && existsSync(join(root, e.name, 'session.jsonl')))
-    .map((e) => {
+    .flatMap((e) => {
       const file = join(root, e.name, 'session.jsonl');
-      const { entries } = readEntries(file);
-      const first = entries.find((e) => e.type === 'message' && e.message.role === 'user');
-      return {
-        id: e.name,
-        firstUserText:
-          first?.type === 'message'
-            ? first.message.content
-                .filter((b) => b.type === 'text')
-                .map((b) => b.text)
-                .join('')
-                .slice(0, 120)
-            : '',
-        mtime: statSync(file).mtime,
-      };
+      try {
+        const { entries } = readEntries(file);
+        const first = entries.find((e) => e.type === 'message' && e.message.role === 'user');
+        return [
+          {
+            id: e.name,
+            firstUserText:
+              first?.type === 'message'
+                ? first.message.content
+                    .filter((b) => b.type === 'text')
+                    .map((b) => b.text)
+                    .join('')
+                    .slice(0, 120)
+                : '',
+            mtime: statSync(file).mtime,
+          },
+        ];
+      } catch (error) {
+        // One corrupt transcript must not brick `sessions` or `-c` (resume latest) for the whole project.
+        process.emitWarning(
+          `Skipping unreadable session ${e.name}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        return [];
+      }
     })
     .sort((a, b) => b.mtime.getTime() - a.mtime.getTime() || b.id.localeCompare(a.id));
 }

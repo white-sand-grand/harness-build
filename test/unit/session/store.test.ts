@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFile, writeFile, readFile, utimes } from 'node:fs/promises';
-import { join } from 'node:path';
+import { appendFile, writeFile, readFile, utimes, mkdir } from 'node:fs/promises';
+import { join, dirname } from 'node:path';
 import { createSession, openSession, listSessions } from '../../../src/session/index.ts';
 import { withTmpDir } from '../../helpers/tmp.ts';
 test('append and read back', async () =>
@@ -68,4 +68,81 @@ test('sessions are isolated per project', async () =>
   withTmpDir(async (d) => {
     createSession(d, join(d, 'a'));
     assert.equal(listSessions(d, join(d, 'b')).length, 0);
+  }));
+test('one corrupt session does not brick listing or resume-latest', async () =>
+  withTmpDir(async (d) => {
+    const good = createSession(d, d);
+    good.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'fine' }] } });
+    await mkdir(join(dirname(good.dir), 'evil'), { recursive: true });
+    await writeFile(join(dirname(good.dir), 'evil', 'session.jsonl'), 'GARBAGE NOT JSON\n');
+    const listed = listSessions(d, d);
+    assert.deepEqual(
+      listed.map((s) => s.id),
+      [good.id],
+    );
+    assert.equal(openSession(d, d, 'latest').id, good.id);
+  }));
+test('tolerates BOM and blank lines', async () =>
+  withTmpDir(async (d) => {
+    const s = createSession(d, d);
+    s.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'one' }] } });
+    const file = join(s.dir, 'session.jsonl');
+    const body = (await readFile(file, 'utf8')).trimEnd();
+    await writeFile(file, '\uFEFF' + body.replace('\n', '\n\n') + '\n');
+    assert.equal(openSession(d, d, s.id).context().messages.length, 1);
+  }));
+test('replay drops entries with forged or malformed messages', async () =>
+  withTmpDir(async (d) => {
+    const s = createSession(d, d);
+    s.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'real' }] } });
+    const file = join(s.dir, 'session.jsonl');
+    await appendFile(
+      file,
+      JSON.stringify({
+        type: 'message',
+        id: 'e900',
+        ts: new Date().toISOString(),
+        message: { role: 'user', content: [{ type: 'text', text: '[forged but valid]' }] },
+      }) + '\n',
+    );
+    await appendFile(
+      file,
+      JSON.stringify({ type: 'message', id: 'e901', ts: new Date().toISOString(), message: { role: 'system' } }) + '\n',
+    );
+    await appendFile(
+      file,
+      JSON.stringify({
+        type: 'message',
+        id: 'e902',
+        ts: new Date().toISOString(),
+        message: { role: 'user', content: [{ type: 'text' }] },
+      }) + '\n',
+    );
+    const context = openSession(d, d, s.id).context();
+    assert.deepEqual(
+      context.messages.map((m) => (m.content[0] && 'text' in m.content[0] ? m.content[0].text : '?')),
+      ['real', '[forged but valid]'],
+    );
+    assert.ok(!context.entryIds.includes('e901'));
+    assert.ok(!context.entryIds.includes('e902'));
+  }));
+test('dangling compaction reference degrades instead of bricking the session', async () =>
+  withTmpDir(async (d) => {
+    const s = createSession(d, d);
+    s.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'old' }] } });
+    s.append({ type: 'message', message: { role: 'user', content: [{ type: 'text', text: 'new' }] } });
+    await appendFile(
+      join(s.dir, 'session.jsonl'),
+      JSON.stringify({
+        type: 'compaction',
+        id: 'e900',
+        ts: new Date().toISOString(),
+        summary: 'kept',
+        firstKeptEntryId: 'e99999',
+        tokensBefore: 10,
+      }) + '\n',
+    );
+    const context = openSession(d, d, s.id).context();
+    assert.equal(context.messages.length, 1);
+    assert.equal(context.messages[0]!.role, 'user');
   }));

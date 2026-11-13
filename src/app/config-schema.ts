@@ -2,12 +2,14 @@ import { validateSchema, type JsonSchema } from '../util/jsonschema.ts';
 const str: JsonSchema = { type: 'string' },
   bool: JsonSchema = { type: 'boolean' },
   positive: JsonSchema = { type: 'integer', minimum: 1 };
+/** Positive integer with an upper bound so a hostile project config cannot request unbounded resources. */
+const bounded = (maximum: number): JsonSchema => ({ type: 'integer', minimum: 1, maximum });
 const object = (properties: Record<string, JsonSchema>): JsonSchema => ({
   type: 'object',
   properties,
   additionalProperties: false,
 });
-const commands: JsonSchema = { type: 'array', items: object({ match: str, command: str, timeoutSec: positive }) };
+const commands: JsonSchema = { type: 'array', items: object({ match: str, command: str, timeoutSec: bounded(86400) }) };
 const modelSchema = object({
   id: str,
   provider: { type: 'string', enum: ['anthropic', 'openai'] },
@@ -51,14 +53,18 @@ const configSchema = object({
     mode: { type: 'string', enum: ['ask', 'yolo'] },
     extraRiskyPatterns: { type: 'array', items: str },
   }),
-  hooks: object({ afterEdit: commands, onStop: commands, maxStopContinuations: { type: 'integer', minimum: 0 } }),
+  hooks: object({
+    afterEdit: commands,
+    onStop: commands,
+    maxStopContinuations: { type: 'integer', minimum: 0, maximum: 100 },
+  }),
   compaction: object({
     enabled: bool,
     clearAtRatio: { type: 'number', minimum: 0, maximum: 1 },
     compactAtRatio: { type: 'number', minimum: 0, maximum: 1 },
-    keepRecentTokens: positive,
+    keepRecentTokens: bounded(2_000_000),
   }),
-  toolOutput: object({ maxChars: positive, maxLines: positive }),
+  toolOutput: object({ maxChars: bounded(2_000_000), maxLines: bounded(100_000) }),
   runtime: object({ profile: str, profiles: { type: 'object' }, plugins: names, watch: bool }),
 });
 export function validateConfig(data: unknown, path: string): void {

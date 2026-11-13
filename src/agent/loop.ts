@@ -3,6 +3,21 @@ import { isContextOverflow } from '../ai/index.ts';
 import { ToolError } from './types.ts';
 import type { AgentConfig, RunOptions, AgentEndReason, ToolResult, ContextReplacement } from './types.ts';
 import { validateCall } from './validate.ts';
+/** Extremely deep tool arguments crash JSON.stringify (V8 recursion) when persisting the transcript. */
+const MAX_ARGS_DEPTH = 64;
+const MAX_TOKEN_CONTINUATIONS = 3;
+function argsDepth(value: unknown): number {
+  let max = 0;
+  const stack: Array<{ value: unknown; depth: number }> = [{ value, depth: 0 }];
+  while (stack.length) {
+    const { value: current, depth } = stack.pop()!;
+    max = Math.max(max, depth);
+    if (current && typeof current === 'object' && depth <= MAX_ARGS_DEPTH)
+      for (const child of Array.isArray(current) ? current : Object.values(current))
+        stack.push({ value: child, depth: depth + 1 });
+  }
+  return max;
+}
 export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunOptions): Promise<AgentEndReason> {
   const emit = opts.onEvent;
   const push = (message: Message) => {
@@ -77,6 +92,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
   let lastUsage: AssistantMessage['usage'] | undefined;
   let turn = 0;
   let retriedOverflow = false;
+  let tokenContinuations = 0;
   emit({ type: 'agentStart' });
   while (true) {
     if (opts.signal.aborted) return end('aborted');
@@ -96,6 +112,9 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       }
     }
     lastUsage = assistant.usage;
+    for (const block of assistant.content)
+      if (block.type === 'toolCall' && argsDepth(block.args) > MAX_ARGS_DEPTH)
+        block.args = { __invalidArgs: 'tool call arguments exceed the supported nesting depth' };
     push(assistant);
     const calls = assistant.content.filter((b): b is ToolCallBlock => b.type === 'toolCall');
     if (assistant.stopReason === 'aborted' || assistant.stopReason === 'error') {
@@ -109,6 +128,8 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
         continue;
       }
       if (assistant.stopReason === 'maxTokens') {
+        if (++tokenContinuations > MAX_TOKEN_CONTINUATIONS)
+          return end('maxTurns', 'Output token limit hit repeatedly; ending this run to avoid an unbounded loop.');
         push({
           role: 'user',
           content: [

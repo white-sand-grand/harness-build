@@ -244,3 +244,25 @@ for (const [name, values, expectedKey, expectedBearer] of [
         },
       );
     }));
+
+test('Anthropic environment-resolved keys are redacted from error diagnostics', async () =>
+  withAuthEnv({ ANTHROPIC_API_KEY: 'fixture-env-key-to-redact-9812' }, async () => {
+    await withSSEServer(
+      () => ({ status: 400, chunks: ['x'.repeat(1475) + 'fixture-env-key-to-redact-9812'] }),
+      async (url) => {
+        const result = await new AnthropicProvider().stream(
+          {
+            model: { ...resolveModel('local-auth-fixture', {}, 'anthropic'), baseUrl: url },
+            system: 'A local authentication test.',
+            messages: [],
+            tools: [],
+          },
+          AbortSignal.timeout(5000),
+          () => {},
+        );
+        assert.equal(result.stopReason, 'error');
+        assert.match(result.errorMessage!, /HTTP 400:.*\[redacted\]/);
+        assert.ok(!result.errorMessage!.includes('fixture-env-key-to-redact-9812'));
+      },
+    );
+  }));

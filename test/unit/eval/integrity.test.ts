@@ -325,3 +325,20 @@ test('comparison rejects runs with different executable-extension environments',
       else process.env.PATHEXT = original;
     }
   }));
+
+test('results.jsonl tampering by the evaluated agent discards the whole run', async () =>
+  withTmpDir(async (d) => {
+    await fixture(d);
+    await assert.rejects(
+      runEval({
+        ...options(d),
+        providerFactory: () =>
+          scripted(
+            { toolCalls: [{ name: 'bash', args: { command: 'echo tampered > ../../../results.jsonl' } }] },
+            { text: 'done' },
+          ),
+      }),
+      /modified during the run/,
+    );
+    assert.match(await readFile(join(d, 'run', 'results.jsonl'), 'utf8'), /tampered/);
+  }));

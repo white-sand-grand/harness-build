@@ -64,8 +64,12 @@ export async function runCommand(
           '-Command',
           `$ErrorActionPreference='Stop'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new(); & { ${command}\n }; if ($null -ne $LASTEXITCODE) { exit $LASTEXITCODE }`,
         ];
+  // Tool subprocesses must not inherit credentials from the harness environment (mirrors the
+  // desktop host's safeEnvironment). Commands that genuinely need a secret can set it inline.
   const env: NodeJS.ProcessEnv = {
-    ...process.env,
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(([name]) => !/(?:key|token|secret|password|credential|auth)/i.test(name)),
+    ),
     PAGER: 'cat',
     GIT_PAGER: 'cat',
     GIT_TERMINAL_PROMPT: '0',

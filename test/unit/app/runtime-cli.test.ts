@@ -133,7 +133,15 @@ test('print CLI uses the selected runtime tool composition with a local fixture 
           models: { fixture: { provider: 'anthropic', baseUrl: url, apiKeyEnv: 'MH_CLI_FIXTURE_KEY' } },
           runtime: { profiles: { read: { tools: ['read'], memory: [], reducer: 'none' } } },
         });
-        const result = await runCLI(cwd, join(cwd, 'home'), ['-p', 'explain this', '--profile', 'read']);
+        // Project-provided model endpoints are trust-gated since the adversarial audit fix;
+        // this test models a user who has reviewed and trusted the project configuration.
+        const result = await runCLI(cwd, join(cwd, 'home'), [
+          '-p',
+          'explain this',
+          '--profile',
+          'read',
+          '--trust-project',
+        ]);
         assert.equal(result.code, 0, result.stderr);
         assert.equal(result.stdout.trim(), 'hello');
       },

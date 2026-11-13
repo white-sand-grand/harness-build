@@ -31,3 +31,23 @@ test('decodes multi-byte UTF-8 split across chunks', async () => {
   const bytes = encode('data: 中文🙂\n\n');
   assert.equal((await parse([...bytes].map((b) => new Uint8Array([b]))))[0]?.data, '中文🙂');
 });
+test('aborts the stream when an event exceeds the buffer limit', async () => {
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(encode('data: ' + 'x'.repeat(3 * 1024 * 1024)));
+      c.close();
+    },
+  });
+  await assert.rejects(
+    (async () => {
+      for await (const _ of parseSSE(stream, new AbortController().signal)) {
+        /* consume until the guard fires */
+      }
+    })(),
+    /buffer without a message boundary/,
+  );
+});
+test('a legitimately large but bounded stream still parses', async () => {
+  const events = await parse([encode('data: ' + 'x'.repeat(1024 * 1024) + '\n\n')]);
+  assert.equal(events.length, 1);
+});

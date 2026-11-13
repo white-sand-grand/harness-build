@@ -1,4 +1,5 @@
 import { AnthropicProvider, OpenAIProvider, resolveModel } from '../ai/index.ts';
+import { join } from 'node:path';
 import type { AgentConfig } from '../agent/index.ts';
 import type { SessionStore } from '../session/index.ts';
 import { createDefaultTools, createBashTool } from '../tools/index.ts';
@@ -73,6 +74,7 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
     const branch = spawnSync('git', ['-C', opts.cwd, 'branch', '--show-current'], {
       encoding: 'utf8',
       windowsHide: true,
+      timeout: 10000,
     });
     const now = new Date(),
       date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -185,6 +187,7 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           strictWriteRoots: opts.writeRoots,
           strictReadRoots: opts.strictReadRoots,
           strictWritePaths: opts.strictWritePaths,
+          deniedPaths: [join(session.dir, 'session.jsonl')],
           approvals: sessionApprovals.get(session),
         }),
         ...pluginHooks,

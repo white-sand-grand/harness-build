@@ -152,7 +152,10 @@ export class OpenAIProvider implements Provider {
     result.cache = { readReported: false, writeReported: false };
     let seen = false,
       terminal = false;
-    const redact = (text: string) => (this.#apiKey ? text.replaceAll(this.#apiKey, '[redacted]') : text);
+    const env = req.model.apiKeyEnv ?? 'OPENAI_API_KEY',
+      resolvedKey = this.#apiKey || process.env[env];
+    // Environment-resolved credentials leak into error bodies too; redact the resolved key.
+    const redact = (text: string) => (resolvedKey ? text.replaceAll(resolvedKey, '[redacted]') : text);
     const announce = (item: ResponseItem) => {
       if (item.type === 'function_call' && item.call_id && item.name && !announced.has(item.call_id)) {
         announced.add(item.call_id);
@@ -160,9 +163,8 @@ export class OpenAIProvider implements Provider {
       }
     };
     try {
-      const env = req.model.apiKeyEnv ?? 'OPENAI_API_KEY',
-        key = this.#apiKey || process.env[env];
-      if (!key) throw new Error(`Missing API key. Set ${env} (for a local server, a placeholder value is sufficient).`);
+      if (!resolvedKey)
+        throw new Error(`Missing API key. Set ${env} (for a local server, a placeholder value is sufficient).`);
       const url = endpoint(
         req.model.baseUrl ?? process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
         '/v1/responses',
@@ -177,7 +179,7 @@ export class OpenAIProvider implements Provider {
             response = await fetch(url, {
               method: 'POST',
               signal,
-              headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+              headers: { authorization: `Bearer ${resolvedKey}`, 'content-type': 'application/json' },
               body: JSON.stringify(buildOpenAIBody(req, useCache)),
             });
             if (response.ok) break;

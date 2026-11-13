@@ -26,7 +26,11 @@ export function isWithin(root: string, path: string): boolean {
   return rel === '' || (!rel.startsWith('..' + sep) && rel !== '..' && !isAbsolute(rel));
 }
 export function projectRoot(cwd: string): string {
-  const r = spawnSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], { encoding: 'utf8', windowsHide: true });
+  const r = spawnSync('git', ['-C', cwd, 'rev-parse', '--show-toplevel'], {
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 10000,
+  });
   return r.status === 0 ? resolve(r.stdout.trim()) : resolve(cwd);
 }
 export function projectSlug(cwd: string): string {

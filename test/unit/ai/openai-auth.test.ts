@@ -195,3 +195,16 @@ test('OpenAI streamed errors redact injected credentials without leaking them th
         },
       );
   }));
+
+test('OpenAI environment-resolved keys are redacted from error diagnostics', async () =>
+  withAuthEnv({ OPENAI_API_KEY: 'fixture-openai-env-key-9812' }, async () => {
+    await withSSEServer(
+      () => ({ status: 400, chunks: ['x'.repeat(1475) + 'fixture-openai-env-key-9812'] }),
+      async (url) => {
+        const result = await new OpenAIProvider().stream(request(url), AbortSignal.timeout(5000), () => {});
+        assert.equal(result.stopReason, 'error');
+        assert.match(result.errorMessage!, /HTTP 400:.*\[redacted\]/);
+        assert.ok(!result.errorMessage!.includes('fixture-openai-env-key-9812'));
+      },
+    );
+  }));
