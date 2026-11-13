@@ -71,7 +71,7 @@ export class DesktopCredentials {
     this.connections.set(connectionId, { apiKey: key.trim() });
     this.usedSecrets.add(key.trim());
   }
-  get(connection: Connection): PrivateCredential | undefined {
+  get(connection: Connection, opts: { allowEnvironmentFallback?: boolean } = {}): PrivateCredential | undefined {
     if (connection.apiKeyEnv) this.capture(connection.apiKeyEnv);
     const direct = this.connections.get(connection.id);
     if (direct) return { ...direct };
@@ -83,6 +83,9 @@ export class DesktopCredentials {
           : { apiKey: value };
       if (connection.provider === 'openai') return undefined;
     }
+    // Project-sourced connections come from a repository file; they must never silently ride the
+    // user's ambient provider keys — only an explicit key reference or a directly configured key.
+    if (opts.allowEnvironmentFallback === false) return undefined;
     const key = this.environment.get(connection.provider === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY');
     if (key) {
       this.usedSecrets.add(key);

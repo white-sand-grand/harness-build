@@ -8,6 +8,7 @@ import type { ChildProcessWithoutNullStreams } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import type { HostCommand, HostMessage, Snapshot } from '../contracts.ts';
+import { isSystemEnvironmentVariable } from '../contracts.ts';
 import { disconnectedSnapshot } from './disconnected.ts';
 
 let window: BrowserWindow | undefined;
@@ -24,6 +25,9 @@ const pending = new Map<
 >();
 const smoke = process.argv.includes('--mh-smoke');
 const testMode = process.argv.includes('--mh-test');
+// A bare executable name on Windows also resolves against the current directory; keep planted
+// binaries in an opened project from hijacking Host/Git process launches.
+process.env.NoDefaultCurrentDirectoryInExePath ??= '1';
 const smokeReportPath = process.env.MH_DESKTOP_SMOKE_REPORT;
 const base = app.getAppPath();
 const rendererFile = join(base, 'dist', 'renderer', 'index.html');
@@ -49,6 +53,32 @@ for (const key of Object.keys(process.env))
 function safeEnvironment() {
   return Object.fromEntries(
     Object.entries(inheritedEnvironment).filter(([key]) => !/(?:key|token|secret|password|credential|auth)/i.test(key)),
+  );
+}
+/**
+ * The Host only needs credential-shaped variables: the three provider defaults plus whatever
+ * names the saved connections reference (or any user-defined secret-looking name). Everything
+ * else in the shell environment — and unrelated third-party tokens with it — stays out of the
+ * Host's memory instead of riding along with the full inherited environment.
+ */
+function credentialEnvironmentForHost(): Record<string, string> {
+  const wanted = new Set(['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'OPENAI_API_KEY']);
+  try {
+    const raw = JSON.parse(readFileSync(join(home, 'desktop-connections.json'), 'utf8')) as unknown;
+    if (Array.isArray(raw))
+      for (const entry of raw)
+        if (entry && typeof entry === 'object' && typeof (entry as Record<string, unknown>).apiKeyEnv === 'string')
+          wanted.add(((entry as Record<string, unknown>).apiKeyEnv as string).trim());
+  } catch {
+    /* missing or unreadable metadata simply contributes no extra names */
+  }
+  return Object.fromEntries(
+    Object.entries(inheritedEnvironment).filter(
+      ([name, value]) =>
+        typeof value === 'string' &&
+        !isSystemEnvironmentVariable(name) &&
+        (wanted.has(name) || /(?:key|token|secret|password|credential|auth)/i.test(name)),
+    ),
   );
 }
 function rejectPending(message: string) {
@@ -197,7 +227,7 @@ async function startHost() {
     });
   if (!host.pid) throw new Error('执行服务没有可用进程标识。');
   await containHost(host.pid);
-  host.postMessage({ home, promptsDir, credentialEnvironment: inheritedEnvironment }, [channel.port2]);
+  host.postMessage({ home, promptsDir, credentialEnvironment: credentialEnvironmentForHost() }, [channel.port2]);
   return ready;
 }
 async function closeApplication() {

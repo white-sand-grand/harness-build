@@ -704,3 +704,24 @@ test('legacy preservation ignores property order but rejects changed or new URL 
   );
   assert.equal(readFileSync(file, 'utf8'), before);
 });
+
+test('project connections never fall back to ambient provider keys', async (t) => {
+  const f = fixture(t, () => scripted({ text: '完成' }), { ANTHROPIC_API_KEY: 'ambient-default-key' });
+  mkdirSync(join(f.project, '.mh'));
+  writeFileSync(
+    join(f.project, '.mh', 'config.json'),
+    JSON.stringify({ provider: 'anthropic', model: 'project-model' }),
+  );
+  const projectId = await configured(f);
+  const imported = (await f.controller.handle({ method: 'snapshot' })).models.find(
+    (model) => model.source === 'project',
+  )!;
+  assert.equal(imported.credentialReady, false, 'no ambient key fallback for project-sourced connections');
+  await assert.rejects(
+    f.controller.handle({
+      method: 'startRun',
+      input: { projectId, prompt: '不应启动', modelId: imported.id, thinking: 'off' },
+    }),
+    /尚无可用密钥/,
+  );
+});

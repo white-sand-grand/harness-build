@@ -6,7 +6,7 @@ import { promisify } from 'node:util';
 import { AnthropicProvider, OpenAIProvider, resolveModel } from '../../src/ai/index.ts';
 import type { Message, Provider } from '../../src/ai/index.ts';
 import type { AgentEvent } from '../../src/agent/index.ts';
-import { loadConfig, mergeConfig, untrustedProjectHooks } from '../../src/app/config.ts';
+import { loadConfig, mergeConfig, readProjectSensitive } from '../../src/app/config.ts';
 import type { Config } from '../../src/app/config.ts';
 import { startRun } from '../../src/app/run.ts';
 import { createSession, listSessions, openSession } from '../../src/session/index.ts';
@@ -137,7 +137,7 @@ export class DesktopController {
   }
   private modelOption(connection: Connection, source: ModelOption['source']): ModelOption {
     const configurationIssue = Object.values(connectionFieldErrors(connection))[0];
-    const credential = this.credentials.get(connection);
+    const credential = this.credentials.get(connection, { allowEnvironmentFallback: source !== 'project' });
     return {
       ...connection,
       source,
@@ -146,12 +146,24 @@ export class DesktopController {
     };
   }
   private readConfig(cwd: string): Config {
-    return loadConfig({
+    const snapshot = readProjectSensitive(cwd);
+    const config = loadConfig({
       cwd,
       home: this.options.home,
       overrides: { promptsDir: this.options.promptsDir },
-      warn: (message) => this.warning(message.startsWith('Project hooks ignored') ? projectHookWarning : message),
+      warn: (message) =>
+        this.warning(message.startsWith('Sensitive project configuration') ? projectHookWarning : message),
+      ...(snapshot ? { projectData: snapshot.data } : {}),
     });
+    // Desktop gates project model definitions through the connection picker (source marking,
+    // credentialReady, explicit selection) instead of the CLI's file-level trust prompt, so
+    // re-admit the model table and its provider; hooks/permissions/plugins stay gated.
+    if (snapshot?.data.models)
+      return mergeConfig(config, {
+        models: snapshot.data.models,
+        ...(snapshot.data.provider ? { provider: snapshot.data.provider } : {}),
+      });
+    return config;
   }
   private refreshModels(config?: Config): void {
     const models = this.connections.map((connection) => this.modelOption(connection, 'desktop'));
@@ -437,7 +449,9 @@ export class DesktopController {
       ...(selected.baseUrl ? { baseUrl: selected.baseUrl } : {}),
       ...(selected.apiKeyEnv ? { apiKeyEnv: selected.apiKeyEnv } : {}),
     });
-    const credential = this.credentials.get(connection);
+    const credential = this.credentials.get(connection, {
+      allowEnvironmentFallback: selected.source !== 'project',
+    });
     if (!credential) throw new Error('该连接尚无可用密钥；请先配置本次连接凭据。');
     const thinking = connection.supportsThinking ? input.thinking : 'off';
     if (thinking !== input.thinking) this.warning('该连接未声明可选择思考深度；本轮使用端点默认设置。');
@@ -497,7 +511,7 @@ export class DesktopController {
     active.done = Promise.resolve().then(async () => {
       let reason = 'error';
       try {
-        const hooks = untrustedProjectHooks(this.options.home, project.path);
+        const hooks = readProjectSensitive(project.path)?.sensitive.hooks as Config['hooks'] | undefined;
         if (hooks) {
           const hash = trustHash(hooks);
           const approved = this.hookApprovals.get(session) ?? new Set<string>();

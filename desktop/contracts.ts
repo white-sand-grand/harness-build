@@ -57,6 +57,9 @@ export function connectionFieldErrors(
         const url = new URL(input.baseUrl);
         if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.search || url.hash)
           errors.baseUrl = 'Base URL 只接受不含用户名、密码、查询参数或片段的 HTTP(S) 接口地址。';
+        else if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname))
+          // Plain HTTP outside localhost would carry credentials and conversation content in cleartext.
+          errors.baseUrl = 'Base URL 只接受 HTTPS 接口地址；本机调试（localhost / 127.0.0.1 / [::1]）可用 HTTP。';
       } catch {
         errors.baseUrl = 'Base URL 必须是完整的 HTTP(S) 接口地址。';
       }

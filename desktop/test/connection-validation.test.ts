@@ -43,3 +43,13 @@ test('service addresses reject credentials and URL suffixes without leaking supp
   }
   assert.deepEqual(connectionFieldErrors({ model: 'step-5-preview', baseUrl: '   ', apiKeyEnv: '   ' }), {});
 });
+
+test('plain HTTP is limited to local debug endpoints', () => {
+  for (const baseUrl of ['http://attacker.example/v1', 'http://api.example.invalid']) {
+    const errors = connectionFieldErrors({ model: 'step-5-preview', baseUrl });
+    assert.match(errors.baseUrl!, /HTTPS/);
+    assert.ok(!JSON.stringify(errors).includes(baseUrl));
+  }
+  for (const baseUrl of ['http://localhost:43110/v1', 'http://127.0.0.1:34567/gateway', 'http://[::1]:8080/v1'])
+    assert.deepEqual(connectionFieldErrors({ model: 'step-5-preview', baseUrl }), {});
+});
