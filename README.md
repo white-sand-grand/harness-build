@@ -28,6 +28,21 @@
 
 设计原理沿课程阅读，具体配置与命令查[运行组合和版本采用指南](docs/plugins.md)。[真实验收报告](docs/reports/pluggable-runtime-validation.md)记录了 Step 的插件复验、受控优化与产物采用结果，并区分机制验证和默认提示词收益。
 
+## 桌面版与 CLI 的区别
+
+桌面版（`desktop/`，独立版本号 `mini-harness-desktop`，当前 **0.1.2**）与 CLI（项目根 `src/`，版本 `mini-harness`，当前 **0.1.0**）共用同一核心执行内核与测试基线，但发布、配置入口和安全边界不同：
+
+| 维度         | CLI (`mh`)                                                                                                     | 桌面版 (`mini-harness-desktop`)                                                       |
+| ------------ | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 版本与打包   | 随仓库版本 `0.1.0`，无独立安装包                                                                               | 独立版本 `0.1.2`，Electron 安装包/免安装目录，依赖与构建全部隔离在 `desktop/`         |
+| 进程与凭据   | 模型密钥取自 CLI 进程环境变量；工具子进程**不继承**凭据形环境变量                                              | 密钥经 main→Host 私有 bootstrap 传递，仅下发凭据形变量；renderer 环境彻底无密钥       |
+| 项目配置信任 | 项目 `.mh/config.json` 敏感字段（hooks/permissions/models/provider/promptsDir）需 `--trust-project` 或交互确认 | 项目模型定义经连接选择器显式选择（来源标记 + 凭据就绪状态）；hooks 有运行时审批对话框 |
+| 项目模型端点 | 未信任时项目 `baseUrl`/`apiKeyEnv` 被剥离                                                                      | project 来源连接禁用环境变量默认密钥回退；base URL 仅接受 HTTPS 或本机调试地址        |
+| 权限确认     | 终端 y/n 提示（ask），`--yolo` 跳过                                                                            | 原生审批对话框，run 结束自动拒绝未决审批                                              |
+| 适用场景     | 脚本、远程/SSH、评测与自进化流水线                                                                             | 本地 GUI 工作台：项目/会话管理、流式执行、Git 变更审阅                                |
+
+审计与修复记录见[对抗性安全审计报告](docs/reports/adversarial-audit-2026-11-14.md)；`fix(cli)` 与 `fix(desktop)` 提交按上述边界分开标注。
+
 ## 安装与运行
 
 先准备 Node ≥ 24 和 pnpm；评测及 dream 还需要 Git。从项目根目录执行以下命令；Windows 使用 PowerShell 7，WSL 使用 Ubuntu bash。依赖应在实际开发所用的平台安装。
@@ -115,7 +130,7 @@ mh ralph '修复测试' --check 'node --test' --max-iter 5
 
 上述 hook 命令使用 bash 语法。PowerShell 回退时使用 `$env:MH_FILE`，例如 `node --check $env:MH_FILE`。文件路径通过环境变量传递，不插入命令文本。检查命令在项目根目录运行；`MH_FILE` 是本次修改文件的绝对路径。
 
-项目 hooks 首次使用需要信任确认；配置改变后重新确认。无人值守默认忽略未信任的项目 hooks 并警告，`--trust-project` 显式信任当前配置。全局 hooks 可信。
+项目配置中的敏感字段（hooks、permissions、models、provider、promptsDir）首次使用需要信任确认；配置改变后重新确认。无人值守默认忽略未信任的项目敏感配置并警告，`--trust-project` 显式信任当前配置。全局配置可信；插件目录由插件加载器自己的指纹与授权流程把关。
 
 默认允许读文件、工作区/会话/项目记忆中的普通写入；工作区外写入与匹配危险模式的命令需确认。交互中可选择仅本次允许、当前会话允许或拒绝；无人可问时拒绝。`--yolo` 跳过这类确认，dream/analyze 的写入范围仍受限制。
 
