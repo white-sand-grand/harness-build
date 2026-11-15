@@ -118,6 +118,12 @@ function validateCommand(value: unknown): HostCommand {
       'approve',
       'review',
       'saveConnection',
+      'backgroundRefresh',
+      'backgroundCreate',
+      'backgroundRun',
+      'backgroundApprove',
+      'backgroundCancel',
+      'backgroundSeen',
     ].includes(String(command.method))
   )
     throw new Error('不支持的桌面操作。');
@@ -176,6 +182,7 @@ async function startHost() {
     readyResolve = resolve;
     readyReject = reject;
   });
+  void ready.catch(() => {}); // Host may exit while process containment is still being established.
   const startupTimer = setTimeout(() => readyReject(new Error('执行服务启动超时。')), 15000);
   port.on('message', (event: { data: HostMessage }) => {
     const message = event.data;
@@ -234,7 +241,11 @@ async function closeApplication() {
   if (closing || closePending) return;
   closePending = true;
   try {
-    if (latest?.run && ['running', 'thinking', 'waitingApproval', 'cancelling'].includes(latest.run.status) && !smoke) {
+    if (
+      ((latest?.run && ['running', 'thinking', 'waitingApproval', 'cancelling'].includes(latest.run.status)) ||
+        latest?.background?.running) &&
+      !smoke
+    ) {
       const answer = await dialog.showMessageBox(window!, {
         type: 'question',
         title: '退出 mini-harness',
@@ -323,7 +334,10 @@ else {
       });
       ipcMain.handle('mh:choose-project', async (event) => {
         ensureSender(event);
-        if (latest?.run && ['running', 'thinking', 'waitingApproval', 'cancelling'].includes(latest.run.status))
+        if (
+          (latest?.run && ['running', 'thinking', 'waitingApproval', 'cancelling'].includes(latest.run.status)) ||
+          latest?.background?.running
+        )
           throw new Error('请先停止当前任务，再切换项目。');
         const selected = await dialog.showOpenDialog(window!, {
           title: '选择项目文件夹',
@@ -373,6 +387,8 @@ else {
       const message = error instanceof Error ? error.message : '桌面程序启动失败。';
       const report = smoke && smokeReportPath;
       if (report) writeFileSync(report, JSON.stringify({ error: message }) + '\n');
+      else if (testMode)
+        writeFileSync(join(home, 'desktop-startup-error.json'), JSON.stringify({ error: message }) + '\n');
       else await dialog.showErrorBox('mini-harness 启动失败', message);
       closing = true;
       host?.kill();

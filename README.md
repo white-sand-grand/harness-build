@@ -12,7 +12,7 @@
 
 ## 学习主线：从执行到进化
 
-沿着[自进化 Harness 源码课程](docs/learn/README.md)学习：执行内核、工具与模型接口 → 会话、上下文、反馈和记忆 → 可组合能力与版本管理 → 可比较评测 → 提示词进化与采用。11 章都包含具体问题、设计理由、源码入口和验证。
+沿着[自进化 Harness 源码课程](docs/learn/README.md)学习：执行内核、工具与模型接口 → 会话、上下文、反馈和记忆 → 可组合能力与版本管理 → 可比较评测 → 提示词进化与采用 → 事件驱动的持续工作。12 章都包含具体问题、设计理由、源码入口和验证。
 
 可以先运行三个无需密钥的例子，观察[最小循环](docs/learn/examples/loop.ts)、[插件版本切换](docs/learn/examples/runtime.ts)和[完整进化闭环](docs/learn/examples/evolution.ts)。它们只固定模型回复，实际内核、worker、文件操作、检查、gate 与产物加载使用真实代码；后两个例子仅使用临时目录。
 
@@ -283,6 +283,10 @@ Evolve 先运行 dev 基线，再生成少量独立候选，用相同任务比�
 
 ## 源码设计
 
+[持续任务](docs/background.md)把 Inbox、timer、准确延期审批和本地 Outbox 接到现有内核外围；普通任务默认只读，维护进化仍通过独立评测与显式采用。可先运行 `node docs/learn/examples/background.ts`，观察真实持久化、相同证据静默和批准后恢复写入。
+
+[持续任务验收报告](docs/reports/always-on-validation.md)记录了离线检查、真实 Electron 界面和 Step 核心八项通过结果；记忆整理的真实补测因预算预留停止，尚未完成。
+
 代码按职责分层，应用层负责把它们接起来。这样修改终端显示时不必碰模型协议，增加检查时也不必改核心循环。
 
 | 层级 | 目录                                                      | 职责                                           |
@@ -361,9 +365,11 @@ WSL 使用同名环境变量的 `export` 写法。可通过 `MH_LIVE_PROVIDER=op
 - **让检查提供反馈**：把测试和命令结果交给模型继续处理；是否通过由实际检查判断。
 - **给自动运行设置边界**：权限确认、超时、轮数和迭代次数控制误操作与无效循环；需要更强的执行隔离时由操作系统或容器提供。
 
-v1 暂不包含 MCP、全屏 TUI、原生子 agent 工具、后台任务服务或会话分支。
+当前暂不包含 MCP、全屏 TUI、原生子 agent 工具、系统级常驻服务或会话分支。
 
 ## 参考资料与借鉴
+
+持续任务的 Inbox、timer、分层记忆、延期审批与 Outbox 参考 Anthropic 的 [Building always-on agents](https://claude.com/resources/articles/building-always-on-agents)；本项目将其落为本地 SQLite、原始 JSONL 对账和有预算的短 run，详见[持续任务指南](docs/background.md)。
 
 以下资料帮助形成了本项目的设计。每项说明借鉴的思路及其在 mini-harness 中的对应实现；本项目采用自己的简化实现，能力范围以本文和代码为准。
 

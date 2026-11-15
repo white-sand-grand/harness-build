@@ -40,6 +40,15 @@ export function parseCLI(args: string[]) {
       timeout: { type: 'string' },
       'optimizer-model': { type: 'string' },
       'optimizer-provider': { type: 'string' },
+      input: { type: 'string' },
+      source: { type: 'string' },
+      'event-id': { type: 'string' },
+      timezone: { type: 'string' },
+      'confirmed-stopped': { type: 'boolean' },
+      at: { type: 'string' },
+      'every-ms': { type: 'string' },
+      'edit-path': { type: 'string', multiple: true },
+      kind: { type: 'string' },
     },
   });
   for (const key of [
@@ -53,6 +62,7 @@ export function parseCLI(args: string[]) {
     'max-calls',
     'max-tokens',
     'timeout',
+    'every-ms',
   ] as const) {
     const raw = result.values[key];
     if (raw !== undefined && (!/^\d+$/.test(raw) || Number(raw) < 1))
@@ -66,6 +76,8 @@ export function parseCLI(args: string[]) {
     throw new Error('--thinking must be off, low, medium, high');
   if (result.values.split && !['dev', 'heldout', 'all'].includes(result.values.split))
     throw new Error('--split must be dev, heldout, all');
+  if (result.values.kind && !['inspect', 'dream', 'evolution'].includes(result.values.kind))
+    throw new Error('--kind must be inspect, dream, evolution');
   return result;
 }
 export const help = `mini-harness 0.1.0
@@ -86,6 +98,16 @@ Usage: mh [prompt] | mh -p "prompt" [--json]
   --json                   JSONL events / JSON command output
   --help, --version
 Commands: sessions | trace [id] | memory [show|path|undo] | plugins
+          background create "goal" [--timezone Asia/Shanghai] [--max-calls N] [--timeout seconds]
+          background enqueue <task> --input event.json [--source local] [--event-id id]
+          background list | run [--max-iter N] | serve | cancel <task>
+          background recover <run> --confirmed-stopped
+          background recover-supervisor --confirmed-stopped
+          background timer <task> --at <ISO-with-offset> [--every-ms N] | cancel-timer <timer>
+          background outbox | seen <message>
+          background approvals | approve <request> | deny <request>
+          background create "goal" --edit-path <file> (each mutation needs a separate approval)
+          background create "goal" --kind dream|evolution (explicit maintenance scope)
           dream [--sessions N] [--dry-run]
           ralph "prompt" --check "cmd" [--max-iter N]
           eval run [--tasks glob] [--split dev|heldout|all] [--repeat N]

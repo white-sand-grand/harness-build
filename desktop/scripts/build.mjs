@@ -14,6 +14,8 @@ const common = {
   sourcemap: true,
   clean: false,
   external: ['electron'],
+  // Built-ins such as node:sqlite require the node: prefix in Node 24.
+  removeNodeProtocol: false,
 };
 await bundle({
   ...common,

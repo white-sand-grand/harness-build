@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent, KeyboardEvent, ReactNode } from 'react';
 import type { Activity, Connection, HostCommand, ModelOption, Run, Snapshot, ThinkingLevel } from '../contracts.ts';
 import { connectionFieldErrors } from '../contracts.ts';
+import { BackgroundPanel } from './BackgroundPanel.tsx';
 
 const activeStates = new Set<Run['status']>(['running', 'thinking', 'waitingApproval', 'cancelling']);
 const runLabels: Record<Run['status'], string> = {
@@ -526,6 +527,7 @@ export function App() {
   const [settings, setSettings] = useState<{ modelId?: string } | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [backgroundOpen, setBackgroundOpen] = useState(false);
   const [dark, setDark] = useState(() => {
     try {
       return localStorage.getItem('mh:theme') === 'dark';
@@ -595,7 +597,7 @@ export function App() {
   const selectedModel = snapshot.models.find((model) => model.id === draft.modelId);
   const thinking = selectedModel?.supportsThinking ? draft.thinking : 'off';
   const run = snapshot.run;
-  const busy = !!run && activeStates.has(run.status);
+  const busy = (!!run && activeStates.has(run.status)) || !!snapshot.background?.running;
   const currentRun = run?.sessionId === sessionId ? run : undefined;
   const currentBusy = !!currentRun && activeStates.has(currentRun.status);
   const awaiting = currentRun?.status === 'waitingApproval';
@@ -605,6 +607,7 @@ export function App() {
     !!draft.text.trim() &&
     !operation &&
     !closing &&
+    !snapshot.background?.running &&
     (currentBusy || (!!selectedModel?.credentialReady && !selectedModel.configurationIssue));
   const title = snapshot.sessions.find((session) => session.id === sessionId)?.title ?? '新的开始';
   const modelChanged = !!currentRun && (currentRun.modelId !== draft.modelId || currentRun.thinking !== thinking);
@@ -615,8 +618,11 @@ export function App() {
     followEnd.current = true;
   }, [scope]);
   useEffect(() => {
-    if (followEnd.current && feed.current) feed.current.scrollTop = feed.current.scrollHeight;
-  }, [snapshot.messages, snapshot.streamingText, snapshot.activities, snapshot.approvals, scope]);
+    if (!backgroundOpen && followEnd.current && feed.current) feed.current.scrollTop = feed.current.scrollHeight;
+  }, [snapshot.messages, snapshot.streamingText, snapshot.activities, snapshot.approvals, scope, backgroundOpen]);
+  useEffect(() => {
+    if (backgroundOpen && feed.current) feed.current.scrollTop = 0;
+  }, [backgroundOpen, project?.id]);
 
   function updateDraft(patch: Partial<Draft>) {
     setDrafts((previous) => ({ ...previous, [scope]: { ...draft, ...patch } }));
@@ -804,6 +810,16 @@ export function App() {
             <strong>{title}</strong>
           </div>
           <div className="top-actions">
+            <Button
+              disabled={!project || !!operation}
+              onClick={() => {
+                setBackgroundOpen(!backgroundOpen);
+                if (project)
+                  void action('background', () => request({ method: 'backgroundRefresh', projectId: project.id }));
+              }}
+            >
+              持续任务
+            </Button>
             <button
               type="button"
               className="icon-button"
@@ -849,7 +865,28 @@ export function App() {
                 followEnd.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
               }}
             >
-              {!snapshot.messages.length && !snapshot.streamingText ? (
+              {backgroundOpen && project && (
+                <BackgroundPanel
+                  key={project.id}
+                  view={snapshot.background}
+                  projectId={project.id}
+                  modelId={
+                    selectedModel?.credentialReady && !selectedModel.configurationIssue ? selectedModel.id : undefined
+                  }
+                  thinking={thinking}
+                  busy={busy}
+                  disabled={!!operation}
+                  onCommand={async (command) => {
+                    let succeeded = false;
+                    await action('background', async () => {
+                      await request(command);
+                      succeeded = true;
+                    });
+                    return succeeded;
+                  }}
+                />
+              )}
+              {!backgroundOpen && !snapshot.messages.length && !snapshot.streamingText ? (
                 <div className="welcome">
                   <Moon className="welcome-moon" />
                   <p className="eyebrow">从一个清楚的目标开始</p>

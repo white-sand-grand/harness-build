@@ -1,25 +1,39 @@
-import { mkdirSync, existsSync } from 'node:fs';
+import { mkdirSync, existsSync, mkdtempSync, rmdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { nonSecretEnvironment } from '../util/process.ts';
 function git(dir: string, args: string[]): string {
-  const r = spawnSync(
-    'git',
-    [
-      '-C',
-      dir,
-      '-c',
-      'user.name=mini-harness',
-      '-c',
-      'user.email=mini-harness@localhost',
-      '-c',
-      'commit.gpgsign=false',
-      ...args,
-    ],
-    { encoding: 'utf8', windowsHide: true },
-  );
-  if (r.error) throw new Error('Git is required for memory snapshots and dreaming. Install Git before running dream.');
-  if (r.status !== 0) throw new Error(`Memory git ${args[0]} failed: ${r.stderr.trim()}`);
-  return r.stdout.trim();
+  const hooks = mkdtempSync(join(tmpdir(), 'mh-memory-hooks-'));
+  try {
+    const r = spawnSync(
+      'git',
+      [
+        '-C',
+        dir,
+        '-c',
+        'user.name=mini-harness',
+        '-c',
+        'user.email=mini-harness@localhost',
+        '-c',
+        'commit.gpgsign=false',
+        '-c',
+        'core.hooksPath=' + hooks,
+        ...args,
+      ],
+      { encoding: 'utf8', windowsHide: true, timeout: 10000, env: nonSecretEnvironment(process.env) },
+    );
+    if (r.error)
+      throw new Error(
+        (r.error as NodeJS.ErrnoException).code === 'ETIMEDOUT'
+          ? 'Memory git exceeded its 10 second timeout.'
+          : 'Git is required for memory snapshots and dreaming. Install Git before running dream.',
+      );
+    if (r.status !== 0) throw new Error(`Memory git ${args[0]} failed: ${r.stderr.trim()}`);
+    return r.stdout.trim();
+  } finally {
+    rmdirSync(hooks);
+  }
 }
 export function ensureRepo(dir: string): void {
   mkdirSync(dir, { recursive: true });

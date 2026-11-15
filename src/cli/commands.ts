@@ -23,6 +23,10 @@ export async function handleCommand(
 ): Promise<number | undefined> {
   const [command, ...rest] = args.positionals,
     v = args.values;
+  if (command === 'background') {
+    const { handleBackgroundCommand } = await import('./background.ts');
+    return handleBackgroundCommand(args, opts);
+  }
   if (command === 'plugins') {
     console.log(
       JSON.stringify(

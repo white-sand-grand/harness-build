@@ -1,4 +1,4 @@
-import type { Hooks, ContextReplacement } from '../agent/index.ts';
+import type { Hooks, ContextReplacement, BeforeToolDecision } from '../agent/index.ts';
 export function composeHooks(...hooks: Hooks[]): Hooks {
   return {
     async modelContext(messages) {
@@ -18,11 +18,13 @@ export function composeHooks(...hooks: Hooks[]): Hooks {
       return replacement;
     },
     async beforeTool(call, tool) {
+      let deferred: BeforeToolDecision | undefined;
       for (const h of hooks) {
         const d = await h.beforeTool?.(call, tool);
         if (d?.action === 'deny') return d;
+        if (d?.action === 'defer') deferred ??= d;
       }
-      return { action: 'allow' };
+      return deferred ?? { action: 'allow' };
     },
     async afterTool(call, tool, result) {
       for (const h of hooks) result = (await h.afterTool?.(call, tool, result)) ?? result;

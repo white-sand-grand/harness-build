@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { runAgent } from '../agent/index.ts';
-import type { AgentEndReason, AgentEvent, ContextReplacement } from '../agent/index.ts';
+import type { AgentEndReason, AgentEvent, ContextReplacement, DeferredBatch, Hooks } from '../agent/index.ts';
 import type { Provider, Usage, Message } from '../ai/index.ts';
 import { zeroUsage, addUsage, cost } from '../ai/index.ts';
 import { createSession } from '../session/index.ts';
@@ -11,6 +11,11 @@ import { buildAgent } from './build-agent.ts';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRuntime, type RuntimeLease, type RuntimeManager, type RuntimeSnapshot } from './runtime.ts';
+import { acquireWorkspace } from './background/ownership.ts';
+import { workspaceOwnerFile } from './background/ownership.ts';
+import type { Ownership } from '../util/ownership.ts';
+import { durableJournal, type DurableInput } from './background/journal.ts';
+import { assertSessionAccess } from './background/access.ts';
 export type StartRunOptions = {
   cwd: string;
   home: string;
@@ -32,6 +37,12 @@ export type StartRunOptions = {
   runtime?: RuntimeManager;
   runtimeSnapshot?: RuntimeSnapshot;
   trustPlugins?: boolean;
+  durable?: DurableInput;
+  workspaceOwnership?: Ownership;
+  sessionGuard?: (session: SessionStore, taskId: string) => void;
+  extraHooks?: Pick<Hooks, 'beforeTool' | 'modelContext'>;
+  onSuspend?: (batch: DeferredBatch, reason: string) => Promise<{ requestId: string }>;
+  resumeTools?: DeferredBatch;
 };
 export type StartRunResult = {
   reason: AgentEndReason;
@@ -61,6 +72,17 @@ export function persistReplacement(session: SessionStore, r: ContextReplacement)
   }
 }
 export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
+  const ownership = opts.workspaceOwnership ?? acquireWorkspace(opts.home, opts.cwd);
+  try {
+    if (ownership.file !== workspaceOwnerFile(opts.home, opts.cwd))
+      throw new Error('Workspace ownership does not match this run.');
+    ownership.assert();
+    return await prepareRun(opts);
+  } finally {
+    if (!opts.workspaceOwnership) ownership.release();
+  }
+}
+async function prepareRun(opts: StartRunOptions): Promise<StartRunResult> {
   const restricted = !!(
     opts.systemOverride ||
     opts.toolsFilter ||
@@ -104,8 +126,19 @@ export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
   }
 }
 async function executeRun(opts: StartRunOptions): Promise<StartRunResult> {
-  const session = opts.session ?? createSession(opts.home, opts.cwd),
-    cfg = buildAgent(opts, session),
+  const session = opts.session ?? createSession(opts.home, opts.cwd);
+  assertSessionAccess(session, opts.sessionGuard);
+  const release = session.acquireWriter();
+  try {
+    return await executeSession(opts, session);
+  } finally {
+    release();
+  }
+}
+async function executeSession(opts: StartRunOptions, session: SessionStore): Promise<StartRunResult> {
+  const journal = opts.durable ? durableJournal(session, opts.durable, opts.prompt) : undefined;
+  if (journal?.result) return { ...journal.result, session };
+  const cfg = buildAgent(opts, session),
     messages = session.context().messages;
   const startEntry = session.entries().length;
   let usage = zeroUsage(),
@@ -166,13 +199,13 @@ async function executeRun(opts: StartRunOptions): Promise<StartRunResult> {
       });
     }
   }
-  function onEvent(e: AgentEvent) {
+  function onEvent(e: AgentEvent, origin?: DurableInput) {
     if (e.type === 'turnStart') {
       turns = e.turn;
       started = Date.now();
     }
     if (e.type === 'message') {
-      session.append({ type: 'message', message: e.message });
+      session.append({ type: 'message', message: e.message, ...(origin ? { origin } : {}) });
       if (e.message.role === 'assistant') {
         usage = addUsage(usage, e.message.usage);
         finalText = e.message.content
@@ -222,15 +255,38 @@ async function executeRun(opts: StartRunOptions): Promise<StartRunResult> {
         name: 'agentEnd',
         data: { reason: e.reason, error: e.error, turns, totalUsage: usage, cost: cost(usage, cfg.model) },
       });
+      journal?.complete({ reason: e.reason, finalText, usage, turns });
     }
+    journal?.event(e, cfg.tools);
     opts.onEvent?.(e);
   }
-  const pending = new Map<string, { id: string; name: string }>();
+  const pending = new Map<string, import('../ai/index.ts').ToolCallBlock>();
   for (const message of messages) {
     if (message.role === 'assistant') for (const b of message.content) if (b.type === 'toolCall') pending.set(b.id, b);
     if (message.role === 'toolResult') pending.delete(message.toolCallId);
   }
+  let resumeTools = opts.resumeTools;
+  if (resumeTools) {
+    if (
+      !Number.isInteger(resumeTools.nextCallIndex) ||
+      resumeTools.nextCallIndex < 0 ||
+      resumeTools.nextCallIndex >= resumeTools.calls.length
+    )
+      throw new Error('Invalid deferred batch cursor.');
+    let next = resumeTools.nextCallIndex;
+    while (next < resumeTools.calls.length && !pending.has(resumeTools.calls[next]!.id)) next++;
+    resumeTools = next === resumeTools.calls.length ? undefined : { calls: resumeTools.calls, nextCallIndex: next };
+  }
+  const resumed = resumeTools?.calls.slice(resumeTools.nextCallIndex);
+  if (
+    resumed &&
+    (opts.prompt ||
+      resumed.length !== pending.size ||
+      resumed.some((call) => JSON.stringify(pending.get(call.id)) !== JSON.stringify(call)))
+  )
+    throw new Error('Deferred batch does not match the actual pending transcript, or input would break tool pairing.');
   for (const call of pending.values()) {
+    if (resumed?.some((resumedCall) => resumedCall.id === call.id)) continue;
     const result: Message = {
       role: 'toolResult',
       toolCallId: call.id,
@@ -246,10 +302,10 @@ async function executeRun(opts: StartRunOptions): Promise<StartRunResult> {
     messages.push(result);
     onEvent({ type: 'message', message: result });
   }
-  if (opts.prompt) {
+  if (opts.prompt && !journal?.inputPresent) {
     const user: Message = { role: 'user', content: [{ type: 'text', text: opts.prompt }] };
     messages.push(user);
-    onEvent({ type: 'message', message: user });
+    onEvent({ type: 'message', message: user }, opts.durable);
   }
   let reason: AgentEndReason;
   let terminal: Extract<AgentEvent, { type: 'agentEnd' }> | undefined;
@@ -261,6 +317,8 @@ async function executeRun(opts: StartRunOptions): Promise<StartRunResult> {
         else onEvent(event);
       },
       getSteering: opts.getSteering,
+      onSuspend: opts.onSuspend,
+      resumeTools,
       toolContext: { cwd: opts.cwd, sessionDir: session.dir, home: opts.home },
     });
     if (reason === 'done')

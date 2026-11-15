@@ -43,7 +43,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       isError: !!result.isError,
     });
   }
-  async function execute(call: ToolCallBlock): Promise<ToolResult> {
+  async function execute(call: ToolCallBlock): Promise<ToolResult | { defer: string }> {
     const tool = cfg.tools.find((t) => t.name === call.name);
     if (!tool)
       return errorResult(`Unknown tool "${call.name}". Available tools: ${cfg.tools.map((t) => t.name).join(', ')}.`);
@@ -52,6 +52,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
     try {
       const decision = await cfg.hooks.beforeTool?.(call, tool);
       if (decision?.action === 'deny') return errorResult(decision.reason);
+      if (decision?.action === 'defer') return { defer: decision.reason };
       const result = await tool.execute(call.args, {
         cwd: opts.toolContext?.cwd ?? '',
         sessionDir: opts.toolContext?.sessionDir ?? '',
@@ -93,7 +94,31 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
   let turn = 0;
   let retriedOverflow = false;
   let tokenContinuations = 0;
+  async function runTools(calls: ToolCallBlock[], from = 0): Promise<boolean> {
+    for (let index = from; index < calls.length; index++) {
+      const call = calls[index]!;
+      emit({ type: 'toolStart', call });
+      const started = Date.now();
+      let result = opts.signal.aborted
+        ? errorResult('Tool call was not executed: the user interrupted the run.')
+        : await execute(call);
+      if ('defer' in result) {
+        if (opts.onSuspend) {
+          const batch = { calls: structuredClone(calls), nextCallIndex: index };
+          const { requestId } = await opts.onSuspend(batch, result.defer);
+          emit({ type: 'toolDeferred', call, batch, requestId, reason: result.defer });
+          return true;
+        }
+        result = errorResult('This caller cannot persist a deferred tool call. The tool was not executed.');
+      }
+      emit({ type: 'toolEnd', call, result, durationMs: Date.now() - started });
+      appendResult(call, result);
+    }
+    return false;
+  }
   emit({ type: 'agentStart' });
+  if (opts.resumeTools && (await runTools(opts.resumeTools.calls, opts.resumeTools.nextCallIndex)))
+    return end('suspended');
   while (true) {
     if (opts.signal.aborted) return end('aborted');
     if (cfg.maxTurns !== undefined && turn >= cfg.maxTurns) return end('maxTurns');
@@ -149,15 +174,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       }
       return end(opts.signal.aborted ? 'aborted' : 'done');
     }
-    for (const call of calls) {
-      emit({ type: 'toolStart', call });
-      const started = Date.now();
-      const result = opts.signal.aborted
-        ? errorResult('Tool call was not executed: the user interrupted the run.')
-        : await execute(call);
-      emit({ type: 'toolEnd', call, result, durationMs: Date.now() - started });
-      appendResult(call, result);
-    }
+    if (await runTools(calls)) return end('suspended');
     for (const m of opts.getSteering?.() ?? []) push(m);
   }
 }

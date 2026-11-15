@@ -13,7 +13,11 @@ import { createSession, listSessions, openSession } from '../../src/session/inde
 import type { SessionStore } from '../../src/session/index.ts';
 import { trustHash } from '../../src/hooks/trust.ts';
 import { matchesGlob } from '../../src/util/glob.ts';
-import { projectRoot } from '../../src/util/paths.ts';
+import { projectRoot, isWithin } from '../../src/util/paths.ts';
+import { BackgroundStore } from '../../src/app/background/store.ts';
+import { BackgroundWorker } from '../../src/app/background/worker.ts';
+import { BackgroundApprovals } from '../../src/app/background/approvals.ts';
+import { BackgroundOutbox } from '../../src/app/background/outbox.ts';
 import type {
   Connection,
   ConversationMessage,
@@ -88,6 +92,7 @@ export class DesktopController {
   private pending = new Map<string, { runId: string; resolve: (decision: Decision) => void }>();
   private hookApprovals = new WeakMap<SessionStore, Set<string>>();
   private publishTimer?: ReturnType<typeof setTimeout>;
+  private backgroundRun?: { abort: AbortController; done: Promise<void>; taskId: string };
 
   constructor(options: DesktopControllerOptions) {
     const { credentialEnvironment, ...rest } = options;
@@ -128,7 +133,7 @@ export class DesktopController {
       this.state.warning = clipped([this.state.warning, text].filter(Boolean).join('\n'), 4000);
   }
   private assertIdle(): void {
-    if (this.active) throw new Error('任务仍在运行；请先停止或等待完成后再切换项目/会话。');
+    if (this.active || this.backgroundRun) throw new Error('任务仍在运行；请先停止或等待完成后再切换项目/会话。');
   }
   private project(id?: string) {
     const project = this.state.project;
@@ -426,11 +431,8 @@ export class DesktopController {
     if (active.afterEdit.size) return 'passed';
     return reason === 'done' ? 'notRun' : 'incomplete';
   }
-  private begin(input: StartRun): void {
-    this.assertIdle();
+  private configuredConnection(input: Pick<StartRun, 'projectId' | 'modelId' | 'thinking'>) {
     const project = this.project(input.projectId);
-    if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 100_000)
-      throw new Error('请输入任务要求，最多 100000 个字符。');
     if (!['off', 'low', 'medium', 'high'].includes(input.thinking)) throw new Error('思考深度无效。');
     this.state.warning = undefined;
     let config = this.readConfig(project.path);
@@ -472,6 +474,13 @@ export class DesktopController {
         },
       },
     });
+    return { project, config, connection, credential, thinking };
+  }
+  private begin(input: StartRun): void {
+    this.assertIdle();
+    if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 100_000)
+      throw new Error('请输入任务要求，最多 100000 个字符。');
+    const { project, config, connection, credential, thinking } = this.configuredConnection(input);
     const session = input.sessionId
       ? this.session?.id === input.sessionId
         ? this.session
@@ -642,6 +651,102 @@ export class DesktopController {
       };
     }
   }
+  private refreshBackground() {
+    if (!this.state.project) {
+      delete this.state.background;
+      return;
+    }
+    const store = new BackgroundStore(this.options.home);
+    try {
+      const approvals = new BackgroundApprovals(store);
+      approvals.expire();
+      const tasks = store.tasks().filter((task) => isWithin(this.state.project!.path, task.cwd));
+      const ids = new Set(tasks.map((task) => task.id));
+      const outbox = new BackgroundOutbox(store);
+      outbox.dispatch();
+      this.state.background = {
+        running: !!this.backgroundRun,
+        error: this.state.background?.error,
+        tasks: tasks.map((task) => ({
+          id: task.id,
+          goal: this.clean(task.goal, 8000),
+          kind: task.kind,
+          state: store.runs().some((run) => run.taskId === task.id && run.state === 'running') ? 'running' : task.state,
+          progress: this.clean(task.progress, 4000),
+          editablePaths: task.editablePaths ?? [],
+        })),
+        approvals: approvals
+          .list()
+          .filter((item) => ids.has(item.taskId))
+          .map((item) => ({
+            id: item.id,
+            taskId: item.taskId,
+            detail: this.clean(item.detail, 20000),
+            state: item.state,
+            expiresAt: item.expiresAt,
+          })),
+        messages: outbox
+          .messages()
+          .filter((item) => ids.has(item.taskId) && item.state === 'delivered')
+          .map((item) => ({
+            id: item.id,
+            taskId: item.taskId,
+            body: this.clean(item.body, 20000),
+            seen: !!item.seenAt,
+          })),
+      };
+    } finally {
+      store.close();
+    }
+  }
+  private requireBackgroundTask(store: BackgroundStore, projectId: string, taskId: string) {
+    const project = this.project(projectId),
+      task = store.task(taskId);
+    if (!isWithin(project.path, task.cwd)) throw new Error('持续任务不属于当前项目。');
+    return task;
+  }
+  private beginBackground(input: Extract<HostCommand, { method: 'backgroundRun' }>) {
+    this.assertIdle();
+    const { config, connection, credential } = this.configuredConnection(input);
+    const store = new BackgroundStore(this.options.home);
+    try {
+      if (this.requireBackgroundTask(store, input.projectId, input.taskId).kind !== 'inspect')
+        throw new Error('维护任务请使用 CLI 后台服务处理。');
+    } catch (error) {
+      store.close();
+      throw error;
+    }
+    const active = { abort: new AbortController(), done: Promise.resolve(), taskId: input.taskId };
+    this.backgroundRun = active;
+    if (this.state.background) delete this.state.background.error;
+    active.done = Promise.resolve().then(async () => {
+      let worker: BackgroundWorker | undefined;
+      try {
+        const provider = this.options.providerFactory
+          ? await this.options.providerFactory(structuredClone(connection), { ...credential })
+          : connection.provider === 'anthropic'
+            ? new AnthropicProvider(credential)
+            : new OpenAIProvider({ apiKey: credential.apiKey });
+        worker = new BackgroundWorker({ store, config, provider, taskIds: [input.taskId] });
+        await worker.runOnce(active.abort.signal);
+      } catch (error) {
+        if (this.state.background)
+          this.state.background.error = this.clean(error instanceof Error ? error.message : String(error), 3000);
+      } finally {
+        worker?.close();
+        store.close();
+        this.backgroundRun = undefined;
+        try {
+          this.refreshBackground();
+          this.refreshSessions();
+        } catch (error) {
+          this.warning(this.clean(String(error)));
+        }
+        this.publish();
+      }
+    });
+    this.refreshBackground();
+  }
   async handle(command: HostCommand): Promise<Snapshot> {
     if (this.closed && command.method !== 'snapshot') throw new Error('执行宿主已关闭。');
     switch (command.method) {
@@ -664,10 +769,12 @@ export class DesktopController {
           name: basename(path) || path,
         };
         this.session = undefined;
+        delete this.state.background;
         delete this.state.selectedSessionId;
         this.resetConversation();
         this.refreshModels(config);
         this.refreshSessions();
+        this.refreshBackground();
         break;
       }
       case 'openSession': {
@@ -738,7 +845,93 @@ export class DesktopController {
       case 'review':
         await this.review(command.projectId);
         break;
+      case 'backgroundRefresh':
+        this.project(command.projectId);
+        this.refreshBackground();
+        break;
+      case 'backgroundCreate': {
+        const project = this.project(command.projectId);
+        if (
+          typeof command.goal !== 'string' ||
+          command.goal.length > 8000 ||
+          !Array.isArray(command.editablePaths) ||
+          command.editablePaths.length > 32 ||
+          command.editablePaths.some((path) => typeof path !== 'string')
+        )
+          throw new Error('持续任务输入无效。');
+        const store = new BackgroundStore(this.options.home);
+        try {
+          store.transaction(() => {
+            const task = store.createTask({
+              cwd: project.path,
+              goal: command.goal,
+              editablePaths: command.editablePaths,
+            });
+            store.insertEvent({
+              taskId: task.id,
+              source: 'desktop',
+              sourceEventId: task.id,
+              kind: 'message',
+              payload: JSON.stringify({ message: 'Start the explicitly scoped task.' }),
+              availableAt: store.now(),
+            });
+          });
+        } finally {
+          store.close();
+        }
+        this.refreshBackground();
+        break;
+      }
+      case 'backgroundRun':
+        this.beginBackground(command);
+        break;
+      case 'backgroundApprove': {
+        const store = new BackgroundStore(this.options.home);
+        try {
+          const approvals = new BackgroundApprovals(store),
+            request = approvals.get(command.approvalId);
+          this.requireBackgroundTask(store, command.projectId, request.taskId);
+          approvals.respond(request.id, command.decision);
+        } finally {
+          store.close();
+        }
+        this.refreshBackground();
+        break;
+      }
+      case 'backgroundCancel': {
+        const store = new BackgroundStore(this.options.home);
+        try {
+          this.requireBackgroundTask(store, command.projectId, command.taskId);
+          store.cancelTask(command.taskId);
+        } finally {
+          store.close();
+        }
+        if (this.backgroundRun?.taskId === command.taskId) {
+          this.backgroundRun.abort.abort();
+          await this.backgroundRun.done;
+        }
+        this.refreshBackground();
+        break;
+      }
+      case 'backgroundSeen': {
+        const store = new BackgroundStore(this.options.home);
+        try {
+          const outbox = new BackgroundOutbox(store),
+            message = outbox.messages().find((item) => item.id === command.messageId);
+          if (!message) throw new Error('结果不存在。');
+          this.requireBackgroundTask(store, command.projectId, message.taskId);
+          outbox.markSeen(message.id);
+        } finally {
+          store.close();
+        }
+        this.refreshBackground();
+        break;
+      }
       case 'shutdown': {
+        if (this.backgroundRun) {
+          this.backgroundRun.abort.abort();
+          await this.backgroundRun.done;
+        }
         if (this.active) await this.handle({ method: 'cancel', runId: this.active.run.id });
         this.closed = true;
         this.credentials.clear();

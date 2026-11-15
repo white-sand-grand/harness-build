@@ -15,6 +15,9 @@ export function disconnectedSnapshot(previous?: Snapshot): Snapshot {
   return {
     ...snapshot,
     seq: snapshot.seq + 1,
+    ...(snapshot.background && {
+      background: { ...snapshot.background, running: false, error: '执行服务中断；已保存的审批仍可在重启后查看。' },
+    }),
     approvals: [],
     streamingText: '',
     activities: snapshot.activities.map((activity) =>

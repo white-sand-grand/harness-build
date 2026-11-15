@@ -32,7 +32,7 @@ export type Proposal = {
   regressionRisk: string;
 };
 export type AnalyzeReason =
-  'done' | 'noChange' | 'insufficientEvidence' | 'modelCallBudget' | 'maxTurns' | 'aborted' | 'error';
+  'done' | 'noChange' | 'insufficientEvidence' | 'modelCallBudget' | 'maxTurns' | 'aborted' | 'error' | 'suspended';
 type Evidence = { ref: string; attempt: string; failure: boolean };
 type RecordWithSession = { result: AttemptResult; entries: SessionEntry[] };
 
@@ -44,7 +44,12 @@ async function copyPrompts(from: string, to: string) {
 }
 
 function analyzable(result: AttemptResult, runDir: string): RecordWithSession | undefined {
-  if (!['pass', 'fail'].includes(result.status) || !result.sessionPath || result.endReason === 'aborted') return;
+  if (
+    !['pass', 'fail'].includes(result.status) ||
+    !result.sessionPath ||
+    ['aborted', 'suspended'].includes(result.endReason)
+  )
+    return;
   if (result.judge && 'error' in result.judge) return;
   try {
     const path = join(result.sessionPath, 'session.jsonl');

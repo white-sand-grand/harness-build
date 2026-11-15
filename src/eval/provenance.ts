@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { loadedImplementationHash } from '../util/implementation.ts';
 import { existsSync, lstatSync, readdirSync, readFileSync, readlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +29,7 @@ export type RunProvenance = {
 };
 
 export const hashText = (text: string | Buffer): string => createHash('sha256').update(text).digest('hex');
+const loadedPackageHash = hashText(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url))));
 export function stableJson(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(stableJson).join(',') + ']';
   if (value && typeof value === 'object')
@@ -161,8 +163,8 @@ export function createProvenance(opts: {
     environmentHash,
     harnessHash: hashText(
       stableJson({
-        source: treeHash(fileURLToPath(new URL('../', import.meta.url))),
-        package: hashText(readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)))),
+        source: loadedImplementationHash,
+        package: loadedPackageHash,
       }),
     ),
     effectiveConfig: sanitizeForArtifact({ ...configuration, ...(runtime ? { runtime } : {}) }) as Record<

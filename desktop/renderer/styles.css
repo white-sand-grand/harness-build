@@ -1268,3 +1268,57 @@ input[type='checkbox'] {
     transform: translateX(-60%);
   }
 }
+
+.background-panel {
+  color: var(--text);
+  margin-bottom: 30px;
+}
+.background-panel h2,
+.background-panel h3,
+.background-panel h4 {
+  overflow-wrap: anywhere;
+}
+.background-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.background-create {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.background-create textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+.background-task {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+.background-task h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.background-progress {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.background-task pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.background-result {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}

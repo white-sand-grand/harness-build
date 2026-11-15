@@ -36,7 +36,9 @@ export interface Tool {
 /** 工具内部抛出它表示"可预期的失败"，message 直接给模型看（要写成可自我纠正的句子）。 */
 export class ToolError extends Error {}
 
-export type BeforeToolDecision = { action: 'allow' } | { action: 'deny'; reason: string }; // reason 进入 isError 的 tool result
+export type BeforeToolDecision =
+  { action: 'allow' } | { action: 'deny'; reason: string } | { action: 'defer'; reason: string };
+export type DeferredBatch = { calls: ToolCallBlock[]; nextCallIndex: number };
 
 export type StopDecision = { action: 'stop' } | { action: 'continue'; message: string };
 
@@ -81,9 +83,11 @@ export type RunOptions = {
   onEvent: (e: AgentEvent) => void;
   /** 每批工具执行完、下次调模型前调用；返回用户在运行中排队的输入。 */
   getSteering?: () => Message[];
+  onSuspend?: (batch: DeferredBatch, reason: string) => Promise<{ requestId: string }>;
+  resumeTools?: DeferredBatch;
 };
 
-export type AgentEndReason = 'done' | 'aborted' | 'error' | 'maxTurns';
+export type AgentEndReason = 'done' | 'aborted' | 'error' | 'maxTurns' | 'suspended';
 
 export type AgentEvent =
   | { type: 'agentStart' }
@@ -93,6 +97,7 @@ export type AgentEvent =
   | { type: 'toolStart'; call: ToolCallBlock }
   | { type: 'toolUpdate'; callId: string; text: string }
   | { type: 'toolEnd'; call: ToolCallBlock; result: ToolResult; durationMs: number }
+  | { type: 'toolDeferred'; call: ToolCallBlock; batch: DeferredBatch; requestId: string; reason: string }
   | { type: 'contextReplaced'; replacement: ContextReplacement }
   | { type: 'stopHook'; decision: StopDecision }
   | { type: 'agentEnd'; reason: AgentEndReason; error?: string };

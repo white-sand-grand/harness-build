@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { memoryDir, readIndex } from '../memory/memory-dir.ts';
 import { renderTemplate } from './prompts.ts';
+import { workspaceOwnerFile } from './background/ownership.ts';
 import type { StartRunOptions } from './run.ts';
 const frozen = new WeakMap<SessionStore, { key: string; system: string }>();
 const sessionApprovals = new WeakMap<SessionStore, Set<string>>();
@@ -187,10 +188,18 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           strictWriteRoots: opts.writeRoots,
           strictReadRoots: opts.strictReadRoots,
           strictWritePaths: opts.strictWritePaths,
-          deniedPaths: [join(session.dir, 'session.jsonl')],
+          deniedPaths: [
+            join(session.dir, 'session.jsonl'),
+            join(session.dir, '.writer.lock'),
+            join(session.dir, 'background.json'),
+            join(session.dir, 'background-context'),
+            workspaceOwnerFile(opts.home, opts.cwd),
+            join(opts.home, 'background'),
+          ],
           approvals: sessionApprovals.get(session),
         }),
         ...pluginHooks,
+        opts.extraHooks ?? {},
         afterEditHook({
           fileCwd: opts.cwd,
           cwd: projectRoot(opts.cwd),

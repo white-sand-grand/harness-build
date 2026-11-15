@@ -128,6 +128,14 @@ export type Snapshot = {
   warning?: string;
   error?: string;
   review?: Review;
+  background?: BackgroundView;
+};
+export type BackgroundView = {
+  running: boolean;
+  tasks: Array<{ id: string; goal: string; kind: string; state: string; progress: string; editablePaths: string[] }>;
+  approvals: Array<{ id: string; taskId: string; detail: string; state: string; expiresAt: number }>;
+  messages: Array<{ id: string; taskId: string; body: string; seen: boolean }>;
+  error?: string;
 };
 export type StartRun = {
   projectId: string;
@@ -146,6 +154,12 @@ export type HostCommand =
   | { method: 'cancel'; runId: string }
   | { method: 'approve'; runId: string; approvalId: string; decision: 'once' | 'session' | 'deny' }
   | { method: 'review'; projectId: string }
+  | { method: 'backgroundRefresh'; projectId: string }
+  | { method: 'backgroundCreate'; projectId: string; goal: string; editablePaths: string[] }
+  | { method: 'backgroundRun'; projectId: string; taskId: string; modelId: string; thinking: ThinkingLevel }
+  | { method: 'backgroundApprove'; projectId: string; approvalId: string; decision: 'allow' | 'deny' }
+  | { method: 'backgroundCancel'; projectId: string; taskId: string }
+  | { method: 'backgroundSeen'; projectId: string; messageId: string }
   | { method: 'saveConnection'; connection: Connection; apiKey?: string }
   | { method: 'shutdown' };
 export type HostRequest = { id: string; command: HostCommand };

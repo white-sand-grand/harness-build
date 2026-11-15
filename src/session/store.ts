@@ -4,6 +4,8 @@ import { sessionId, type DistributiveOmit } from '../util/ids.ts';
 import { projectSlug } from '../util/paths.ts';
 import type { SessionEntry, SessionStore } from './types.ts';
 import { rebuild } from './rebuild.ts';
+import { acquireOwnership, type Ownership } from '../util/ownership.ts';
+import { flushFile, replaceFileDurably } from '../util/durable-file.ts';
 const sessionsDir = (home: string, cwd: string) => join(home, 'projects', projectSlug(cwd), 'sessions');
 /** Guards against memory exhaustion from a tampered or corrupt transcript with a gigantic single line. */
 const MAX_ENTRY_CHARS = 32 * 1024 * 1024;
@@ -43,22 +45,62 @@ class Store implements SessionStore {
   private file: string;
   private records: SessionEntry[];
   private next: number;
+  private ownership?: Ownership;
   constructor(dir: string) {
     this.dir = dir;
     this.file = join(dir, 'session.jsonl');
-    const { entries, repaired, needsNewline } = readEntries(this.file);
-    this.records = entries;
-    this.id = entries[0]!.id;
-    this.next = Math.max(0, ...entries.map((e) => (/^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0))) + 1;
-    if (repaired) writeFileSync(this.file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
-    else if (needsNewline) appendFileSync(this.file, '\n');
+    const ownership = acquireOwnership(join(dir, '.writer.lock'));
+    try {
+      const { entries, repaired, needsNewline } = readEntries(this.file);
+      this.records = entries;
+      this.id = entries[0]!.id;
+      this.next = Math.max(0, ...entries.map((e) => (/^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0))) + 1;
+      if (repaired) replaceFileDurably(this.file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+      else if (needsNewline) appendFileSync(this.file, '\n');
+    } finally {
+      ownership.release();
+    }
+  }
+  acquireWriter(): () => void {
+    if (this.ownership) throw new Error('This session already has an active writer.');
+    const ownership = acquireOwnership(join(this.dir, '.writer.lock'));
+    try {
+      const { entries, repaired, needsNewline } = readEntries(this.file);
+      if (repaired) replaceFileDurably(this.file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n');
+      else if (needsNewline) appendFileSync(this.file, '\n');
+      this.records = entries;
+      this.next = Math.max(0, ...entries.map((e) => (/^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0))) + 1;
+      this.ownership = ownership;
+      return () => {
+        ownership.release();
+        this.ownership = undefined;
+      };
+    } catch (error) {
+      ownership.release();
+      throw error;
+    }
+  }
+  flush(): void {
+    const release = this.ownership ? undefined : this.acquireWriter();
+    try {
+      this.ownership!.assert();
+      flushFile(this.file);
+    } finally {
+      release?.();
+    }
   }
   append(entry: DistributiveOmit<SessionEntry, 'id' | 'ts'>): string {
-    const id = `e${this.next++}`;
-    const record = { ...entry, id, ts: new Date().toISOString() } as SessionEntry;
-    appendFileSync(this.file, JSON.stringify(record) + '\n');
-    this.records.push(record);
-    return id;
+    const release = this.ownership ? undefined : this.acquireWriter();
+    try {
+      this.ownership!.assert();
+      const id = `e${this.next++}`;
+      const record = { ...entry, id, ts: new Date().toISOString() } as SessionEntry;
+      appendFileSync(this.file, JSON.stringify(record) + '\n');
+      this.records.push(record);
+      return id;
+    } finally {
+      release?.();
+    }
   }
   entries() {
     return structuredClone(this.records);
@@ -67,16 +109,24 @@ class Store implements SessionStore {
     return rebuild(this.records, this.dir);
   }
 }
-export function createSession(home: string, cwd: string): SessionStore {
+export function createSession(home: string, cwd: string, title?: string): SessionStore {
   const id = sessionId(),
     dir = join(sessionsDir(home, cwd), id);
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     join(dir, 'session.jsonl'),
-    JSON.stringify({ type: 'header', v: 1, id, cwd, createdAt: new Date().toISOString(), harnessVersion: '0.1.0' }) +
-      '\n',
+    JSON.stringify({
+      type: 'header',
+      v: 1,
+      id,
+      cwd,
+      createdAt: new Date().toISOString(),
+      harnessVersion: '0.1.0',
+      ...(title ? { title: title.slice(0, 8000) } : {}),
+    }) + '\n',
     { flag: 'wx' },
   );
+  flushFile(join(dir, 'session.jsonl'));
   return new Store(dir);
 }
 export function listSessions(home: string, cwd: string): Array<{ id: string; firstUserText: string; mtime: Date }> {
@@ -89,17 +139,20 @@ export function listSessions(home: string, cwd: string): Array<{ id: string; fir
       try {
         const { entries } = readEntries(file);
         const first = entries.find((e) => e.type === 'message' && e.message.role === 'user');
+        const title = entries[0]?.type === 'header' ? entries[0].title : undefined;
         return [
           {
             id: e.name,
             firstUserText:
-              first?.type === 'message'
-                ? first.message.content
-                    .filter((b) => b.type === 'text')
-                    .map((b) => b.text)
-                    .join('')
-                    .slice(0, 120)
-                : '',
+              typeof title === 'string'
+                ? title.slice(0, 120)
+                : first?.type === 'message'
+                  ? first.message.content
+                      .filter((b) => b.type === 'text')
+                      .map((b) => b.text)
+                      .join('')
+                      .slice(0, 120)
+                  : '',
             mtime: statSync(file).mtime,
           },
         ];

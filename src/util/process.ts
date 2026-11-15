@@ -2,6 +2,13 @@ import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { win32, posix } from 'node:path';
+export function nonSecretEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(environment).filter(
+      ([name]) => !/(?:key|token|secret|password|credential|auth)/i.test(name) && !name.startsWith('NODE_TEST_'),
+    ),
+  );
+}
 export type Shell = { kind: 'bash' | 'powershell'; executable: string; name: string };
 export function detectShell(
   opts: { platform?: string; env?: NodeJS.ProcessEnv; exists?: (p: string) => boolean } = {},
@@ -67,9 +74,7 @@ export async function runCommand(
   // Tool subprocesses must not inherit credentials from the harness environment (mirrors the
   // desktop host's safeEnvironment). Commands that genuinely need a secret can set it inline.
   const env: NodeJS.ProcessEnv = {
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(([name]) => !/(?:key|token|secret|password|credential|auth)/i.test(name)),
-    ),
+    ...Object.fromEntries(Object.entries(nonSecretEnvironment(process.env))),
     PAGER: 'cat',
     GIT_PAGER: 'cat',
     GIT_TERMINAL_PROMPT: '0',

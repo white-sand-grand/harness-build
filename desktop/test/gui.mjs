@@ -301,6 +301,14 @@ async function startFixture() {
         );
         text(response, 0, scenario === 'approve' ? 'GUI_APPROVAL_DONE' : 'GUI_DENIAL_DONE');
         finish(response, 'end_turn');
+      } else if (scenario === 'background' && item.step === 0) {
+        assert.deepEqual(item.toolNames, ['read', 'write', 'edit']);
+        tool(response, 0, 'write', { path: 'background 中文.txt', content: 'GUI_BACKGROUND_WRITE\n' });
+        finish(response, 'tool_use');
+      } else if (scenario === 'background' && item.step === 1) {
+        assert.ok(results.some((entry) => !entry.is_error && JSON.stringify(entry).includes('background 中文.txt')));
+        text(response, 0, 'GUI_BACKGROUND_DONE');
+        finish(response, 'end_turn');
       } else if (scenario === 'cancel' && item.step === 0) {
         pendingResponses.add(response);
         response.once('close', () => {
@@ -419,7 +427,7 @@ async function launch() {
   const targetsUrl = `http://127.0.0.1:${port}/json/list`;
   assertLoopback(targetsUrl);
   const target = await waitFor('actual application renderer', async () => {
-    const response = await fetch(targetsUrl);
+    const response = await fetch(targetsUrl, { signal: AbortSignal.timeout(3000) });
     const targets = await response.json();
     return targets.find(
       (entry) => entry.type === 'page' && entry.url.startsWith('file:') && entry.webSocketDebuggerUrl,
@@ -514,6 +522,9 @@ async function waitSnapshot(label, predicate) {
 }
 
 async function clickExpression(expression) {
+  await waitFor('UI target ready for native input', () =>
+    evaluate(`(() => { const target = (${expression}); return !!target && !target.disabled; })()`),
+  );
   const position = await evaluate(
     `(() => { const element = (${expression}); if (!element) throw new Error('UI target not found'); if (element.disabled) throw new Error('UI target is disabled'); element.scrollIntoView({block:'center',inline:'center'}); const rect = element.getBoundingClientRect(); if (!rect.width || !rect.height) throw new Error('UI target is not visible'); return {x:rect.left+rect.width/2,y:rect.top+rect.height/2}; })()`,
   );
@@ -555,6 +566,9 @@ const buttonText = (text, scope = 'document') =>
   );
 
 async function fillExpression(expression, value) {
+  await waitFor('input enabled for typing', () =>
+    evaluate(`(() => { const input = (${expression}); return !!input && !input.disabled; })()`),
+  );
   await evaluate(
     `(() => { const input = (${expression}); if (!input) throw new Error('Input not found'); input.focus(); input.select(); })()`,
   );
@@ -566,6 +580,11 @@ const fieldExpression = (label) =>
   `[...document.querySelectorAll('dialog label')].find(label => label.textContent.trim().startsWith(${JSON.stringify(label)}))?.querySelector('input,select')`;
 
 async function select(selector, value) {
+  await waitFor('select enabled with requested option', () =>
+    evaluate(
+      `(() => { const input=document.querySelector(${JSON.stringify(selector)}); return !!input && !input.disabled && [...input.options].some(option => option.value === ${JSON.stringify(value)}); })()`,
+    ),
+  );
   await evaluate(
     `(() => { const input=document.querySelector(${JSON.stringify(selector)}); if(!input || input.disabled) throw new Error('Select unavailable'); const setter=Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set; setter.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('change',{bubbles:true})); })()`,
   );
@@ -1055,6 +1074,78 @@ async function main() {
     );
     return { originalSession, savedMessages: state.messages.length, noModelReplay: true };
   });
+  await check(
+    'persistent background approval is reviewable after renderer reload and resumes the exact write',
+    async () => {
+      fixture.select('background');
+      await select('.select-control:not(.effort-select) select', report.modelId);
+      await select('.effort-select select', 'off');
+      await clickExpression(
+        `[...document.querySelectorAll('.top-actions button')].find(button => button.textContent.includes('持续任务'))`,
+      );
+      await waitFor('background panel visible', () => evaluate('!!document.querySelector(".background-create")'));
+      await fillExpression(
+        `document.querySelectorAll('.background-create textarea')[0]`,
+        'GUI_BACKGROUND：只修改指定文件，保存确认后继续。',
+      );
+      await fillExpression(`document.querySelectorAll('.background-create textarea')[1]`, 'background 中文.txt');
+      await click('.background-create .primary');
+      const created = await waitSnapshot('scoped background task created', (state) =>
+        state.background?.tasks.some((task) => task.goal.includes('GUI_BACKGROUND')),
+      );
+      const taskId = created.background.tasks.find((task) => task.goal.includes('GUI_BACKGROUND')).id;
+      await click('.background-task > .approval-actions .button');
+      await waitSnapshot(
+        'background call suspended durably',
+        (state) =>
+          !state.background?.running &&
+          state.background?.approvals.some((approval) => approval.taskId === taskId && approval.state === 'pending'),
+      );
+      assert.equal(await exists(join(report.project, 'background 中文.txt')), false);
+      const beforeReload = report.requests.filter((item) => item.scenario === 'background').length;
+      assert.equal(beforeReload, 1);
+      await screenshot('background-approval');
+      let reloadFinished = false;
+      currentApp.cdp.on('Page.loadEventFired', () => {
+        reloadFinished = true;
+      });
+      await currentApp.cdp.send('Page.reload');
+      await waitFor('background renderer reload completed', () => reloadFinished);
+      await waitFor('renderer bridge after reload', () => evaluate('!!window.mh'));
+      await waitSnapshot('model metadata after reload', (state) => state.models.length >= 2);
+      await select('.select-control:not(.effort-select) select', report.modelId);
+      await select('.effort-select select', 'off');
+      await clickExpression(
+        `[...document.querySelectorAll('.top-actions button')].find(button => button.textContent.includes('持续任务'))`,
+      );
+      await waitFor('saved background approval rendered', () =>
+        evaluate('!!document.querySelector(".background-task .approval-card")'),
+      );
+      assert.equal(report.requests.filter((item) => item.scenario === 'background').length, beforeReload);
+      await click('.background-task .approval-card .primary');
+      await waitSnapshot('background response is queued', (state) =>
+        state.background?.approvals.some((approval) => approval.taskId === taskId && approval.state === 'answered'),
+      );
+      await click('.background-task > .approval-actions .button');
+      const completed = await waitSnapshot(
+        'background resumed write completed',
+        (state) =>
+          !state.background?.running &&
+          state.background?.approvals.some((approval) => approval.taskId === taskId && approval.state === 'consumed'),
+      );
+      assert.equal(await readFile(join(report.project, 'background 中文.txt'), 'utf8'), 'GUI_BACKGROUND_WRITE\n');
+      assert.equal(report.requests.filter((item) => item.scenario === 'background').length, 2);
+      assert.ok(completed.background.messages.some((message) => message.body.includes('GUI_BACKGROUND_DONE')));
+      await waitFor('background result actually rendered', () =>
+        evaluate('document.querySelector(".background-panel")?.textContent.includes("GUI_BACKGROUND_DONE")'),
+      );
+      await screenshot('background-completed');
+      await clickExpression(
+        `[...document.querySelectorAll('.top-actions button')].find(button => button.textContent.includes('持续任务'))`,
+      );
+      return { taskId, actualWrite: true, calls: 2, persistedApproval: true, reloadDidNotCallModel: true };
+    },
+  );
   await check('process restart restores metadata/history while memory-only credentials are gone', async () => {
     const calls = report.requests.length;
     await stopApplication(currentApp);
