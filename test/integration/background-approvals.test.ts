@@ -415,14 +415,33 @@ test('real compaction cannot erase approval consumption or block later task even
     const task = store.createTask({ cwd: d, goal: 'Update then inspect', editablePaths: ['a.txt'] });
     store.enqueue({ taskId: task.id, source: 'local', sourceEventId: 'start', payload: {} });
     const config = defaultConfig();
-    config.models[config.model] = { contextWindow: 2048 };
+    // A real request must fit system/tools plus output reserve; use a low trigger instead of an impossible window.
+    config.models[config.model] = { contextWindow: 16000, maxOutputTokens: 2048 };
+    config.compaction.compactAtRatio = 0.2;
+    config.compaction.clearAtRatio = 0.15;
     config.compaction.keepRecentTokens = 1000;
     const provider = scripted(
       mutation,
       { toolCalls: [{ name: 'read', args: { path: 'large.txt' } }] },
-      { text: 'Goal: update and inspect. The file was updated; continue from the recorded evidence.' },
+      {
+        text: JSON.stringify({
+          v: 1,
+          goal: 'Update and inspect',
+          decisions: [],
+          unresolved: [],
+          nextSteps: ['continue from recorded evidence'],
+        }),
+      },
       { text: 'done' },
-      { text: 'Updated file and inspected evidence; continue with the new follow-up.' },
+      {
+        text: JSON.stringify({
+          v: 1,
+          goal: 'Update and inspect',
+          decisions: [],
+          unresolved: [],
+          nextSteps: ['continue follow-up'],
+        }),
+      },
       { text: 'followup complete' },
     );
     const worker = new BackgroundWorker({ store, config, provider }),

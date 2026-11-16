@@ -110,6 +110,7 @@ Commands: sessions | trace [id] | memory [show|path|undo] | plugins
           background create "goal" --kind dream|evolution (explicit maintenance scope)
           dream [--sessions N] [--dry-run]
           ralph "prompt" --check "cmd" [--max-iter N]
+          ralph --resume <checkpoint-session> --check "cmd" [--max-iter N]
           eval run [--tasks glob] [--split dev|heldout|all] [--repeat N]
                    [--variant dir] [--concurrency N] [--output dir]
           eval compare <runA> <runB> | analyze <run>

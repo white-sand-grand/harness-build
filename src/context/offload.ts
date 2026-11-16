@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import type { Hooks } from '../agent/index.ts';
 import { truncate } from '../util/truncate.ts';
 export function offloadHook(cfg: { sessionDir: string; maxChars: number; maxLines: number }): Hooks {
@@ -13,7 +14,7 @@ export function offloadHook(cfg: { sessionDir: string; maxChars: number; maxLine
       if (!cut) return result;
       const dir = join(cfg.sessionDir, 'offload');
       await mkdir(dir, { recursive: true });
-      const path = join(dir, call.id.replace(/[^a-zA-Z0-9_-]/g, '_') + '.txt');
+      const path = join(dir, call.id.replace(/[^a-zA-Z0-9_-]/g, '_') + '-' + randomUUID() + '.txt');
       await writeFile(path, text);
       const marker = `\n…[truncated: ${cut.omittedLines} lines / ${cut.omittedChars} chars omitted. Full output saved to ${path}. Use read with offset/limit or bash grep to inspect it.]…\n`;
       return {

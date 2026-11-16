@@ -1,7 +1,13 @@
 import type { Message } from '../ai/index.ts';
-import type { SessionEntry } from './types.ts';
-export const clearedText = (name: string) =>
-  `[Output of ${name} cleared to save context. Re-run the tool call if you need it again.]`;
+import type { SessionEntry, ClearingReceipt } from './types.ts';
+export const clearedText = (name: string, receipt?: ClearingReceipt, dir?: string) => {
+  const valid =
+    receipt &&
+    /^e\d+$/.test(receipt.entryId) &&
+    receipt.outputRef === `cleared/${receipt.entryId}.txt` &&
+    /^[a-f0-9]{64}$/.test(receipt.sha256);
+  return `[Output of ${name} cleared to save context. ${valid ? `Recorded result ${receipt.entryId}; saved output: ${dir}/${receipt.outputRef} (sha256 ${receipt.sha256}).` : `Read the original result in ${dir ?? 'the session directory'}/session.jsonl.`} Read the saved output; if unavailable consult the original transcript. Do not rerun a command to recover its output.]`;
+};
 export const summaryMessage = (summary: string, dir: string): Message => ({
   role: 'user',
   content: [{ type: 'text', text: `<summary>${summary}</summary>\n(The full transcript is at ${dir}/session.jsonl)` }],
@@ -67,6 +73,11 @@ export function rebuild(entries: SessionEntry[], dir: string): { messages: Messa
     }
   }
   const cleared = new Set(entries.flatMap((e) => (e.type === 'clearing' ? e.clearedEntryIds : [])));
+  const receipts = new Map(
+    entries.flatMap((e) =>
+      e.type === 'clearing' ? (e.receipts ?? []).map((receipt) => [receipt.entryId, receipt] as const) : [],
+    ),
+  );
   for (const entry of entries.slice(start))
     if (entry.type === 'message') {
       if (!isValidMessage(entry.message)) {
@@ -75,7 +86,10 @@ export function rebuild(entries: SessionEntry[], dir: string): { messages: Messa
       }
       const m = structuredClone(entry.message);
       if (cleared.has(entry.id) && m.role === 'toolResult')
-        m.content = [{ type: 'text', text: clearedText(m.toolName) }];
+        m.content = [
+          { type: 'text', text: clearedText(m.toolName, receipts.get(entry.id), dir) },
+          ...m.content.filter((b) => b.type === 'image'),
+        ];
       messages.push(m);
       entryIds.push(entry.id);
     }

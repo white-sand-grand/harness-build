@@ -8,6 +8,7 @@ import type {
   ModelInfo,
   ThinkingLevel,
   JsonSchema,
+  ModelRequest,
 } from '../ai/index.ts';
 
 export type ToolContext = {
@@ -49,7 +50,12 @@ export type Hooks = {
   /** force=true：上下文溢出后的被动压缩，或 /compact 手动触发——必须执行 Level 2 压缩。 */
   beforeModel?(
     messages: Message[],
-    info: { lastUsage?: AssistantMessage['usage']; force?: boolean },
+    info: {
+      lastUsage?: AssistantMessage['usage'];
+      force?: boolean;
+      request?: Pick<ModelRequest, 'system' | 'tools' | 'maxOutputTokens'>;
+      previousRequest?: Pick<ModelRequest, 'system' | 'tools' | 'maxOutputTokens'>;
+    },
   ): Promise<ContextReplacement | undefined>;
   beforeTool?(call: ToolCallBlock, tool: Tool): Promise<BeforeToolDecision>;
   /** 可在结果上追加内容（例如 lint 错误）。返回新的 ToolResult。 */

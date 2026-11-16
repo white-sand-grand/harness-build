@@ -1,4 +1,4 @@
-import type { Message, AssistantMessage, ToolCallBlock } from '../ai/index.ts';
+import type { Message, AssistantMessage, ToolCallBlock, ModelRequest } from '../ai/index.ts';
 import { isContextOverflow } from '../ai/index.ts';
 import { ToolError } from './types.ts';
 import type { AgentConfig, RunOptions, AgentEndReason, ToolResult, ContextReplacement } from './types.ts';
@@ -31,8 +31,9 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
   };
   function replace(r: ContextReplacement) {
     lastUsage = undefined;
-    messages.splice(0, messages.length, ...r.messages);
+    previousRequest = undefined;
     emit({ type: 'contextReplaced', replacement: r });
+    messages.splice(0, messages.length, ...r.messages);
   }
   function appendResult(call: ToolCallBlock, result: ToolResult) {
     push({
@@ -68,7 +69,7 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       );
     }
   }
-  const request = async () => {
+  const prepareRequest = async (): Promise<ModelRequest | undefined> => {
     let context: string | undefined;
     try {
       context = (await cfg.hooks.modelContext?.(messages))?.trim();
@@ -77,20 +78,19 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
       throw error;
     }
     if (opts.signal.aborted) return undefined;
-    return cfg.provider.stream(
-      {
-        model: cfg.model,
-        system: context ? `${cfg.system}\n\n${context}` : cfg.system,
-        systemCacheBoundary: cfg.systemCacheBoundary,
-        messages,
-        tools: cfg.tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
-        thinking: cfg.thinking,
-      },
-      opts.signal,
-      (event) => emit({ type: 'stream', event }),
-    );
+    return {
+      model: cfg.model,
+      system: context ? `${cfg.system}\n\n${context}` : cfg.system,
+      systemCacheBoundary: cfg.systemCacheBoundary,
+      messages,
+      tools: cfg.tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
+      thinking: cfg.thinking,
+    };
   };
+  const request = (input: ModelRequest) =>
+    cfg.provider.stream(input, opts.signal, (event) => emit({ type: 'stream', event }));
   let lastUsage: AssistantMessage['usage'] | undefined;
+  let previousRequest: ModelRequest | undefined;
   let turn = 0;
   let retriedOverflow = false;
   let tokenContinuations = 0;
@@ -123,20 +123,29 @@ export async function runAgent(cfg: AgentConfig, messages: Message[], opts: RunO
     if (opts.signal.aborted) return end('aborted');
     if (cfg.maxTurns !== undefined && turn >= cfg.maxTurns) return end('maxTurns');
     emit({ type: 'turnStart', turn: ++turn });
-    const replacement = await cfg.hooks.beforeModel?.(messages, { lastUsage });
+    let input = await prepareRequest();
+    if (!input) return end('aborted');
+    const replacement = await cfg.hooks.beforeModel?.(messages, { lastUsage, request: input, previousRequest });
     if (replacement) replace(replacement);
-    let assistant = await request();
-    if (!assistant) return end('aborted');
+    if (opts.signal.aborted) return end('aborted');
+    let assistant = await request(input);
     if (assistant.stopReason === 'error' && isContextOverflow(assistant.errorMessage) && !retriedOverflow) {
       retriedOverflow = true;
-      const forced = await cfg.hooks.beforeModel?.(messages, { lastUsage, force: true });
+      const forced = await cfg.hooks.beforeModel?.(messages, {
+        lastUsage,
+        force: true,
+        request: input,
+        previousRequest,
+      });
       if (forced) {
         replace(forced);
-        assistant = await request();
-        if (!assistant) return end('aborted');
+        input = await prepareRequest();
+        if (!input) return end('aborted');
+        assistant = await request(input);
       }
     }
     lastUsage = assistant.usage;
+    previousRequest = { ...input, messages: [] };
     for (const block of assistant.content)
       if (block.type === 'toolCall' && argsDepth(block.args) > MAX_ARGS_DEPTH)
         block.args = { __invalidArgs: 'tool call arguments exceed the supported nesting depth' };

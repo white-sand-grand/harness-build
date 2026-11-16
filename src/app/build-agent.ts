@@ -16,6 +16,8 @@ import { compactionHook } from '../context/compaction.ts';
 import { collectInstructions } from '../memory/agents-md.ts';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { replaceFileDurably } from '../util/durable-file.ts';
 import { memoryDir, readIndex } from '../memory/memory-dir.ts';
 import { renderTemplate } from './prompts.ts';
 import { workspaceOwnerFile } from './background/ownership.ts';
@@ -118,6 +120,22 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
       }),
     onFailure: (message) =>
       session.append({ type: 'trace', name: 'hook', data: { hook: 'compaction', decision: 'failed', message } }),
+    source: () => ({ entryIds: session.context().entryIds, entries: session.entries() }),
+    prepareClearing: (indices) => {
+      const current = session.context();
+      return indices.map((index) => {
+        const entryId = current.entryIds[index]!;
+        if (!/^e\d+$/.test(entryId)) throw new Error('Invalid clearing entry identity.');
+        const text = current.messages[index]!.content.filter((b) => b.type === 'text')
+          .map((b) => b.text)
+          .join('\n');
+        const outputRef = `cleared/${entryId}.txt`;
+        mkdirSync(join(session.dir, 'cleared'), { recursive: true });
+        replaceFileDurably(join(session.dir, outputRef), text);
+        return { index, entryId, outputRef, sha256: createHash('sha256').update(text).digest('hex') };
+      });
+    },
+    onBudget: (data) => session.append({ type: 'trace', name: 'hook', data: { hook: 'contextBudget', ...data } }),
   });
   const contextHook = runtime
     ? {
@@ -186,13 +204,18 @@ export function buildAgent(opts: StartRunOptions, session: SessionStore): AgentC
           ask: opts.ask,
           extraPatterns: config.permissions.extraRiskyPatterns.map((p) => new RegExp(p, 'i')),
           strictWriteRoots: opts.writeRoots,
-          strictReadRoots: opts.strictReadRoots,
+          strictReadRoots: opts.strictReadRoots
+            ? [...opts.strictReadRoots, join(session.dir, 'cleared'), join(session.dir, 'offload')]
+            : undefined,
           strictWritePaths: opts.strictWritePaths,
           deniedPaths: [
+            ...(opts.protectedPaths ?? []),
             join(session.dir, 'session.jsonl'),
             join(session.dir, '.writer.lock'),
             join(session.dir, 'background.json'),
             join(session.dir, 'background-context'),
+            join(session.dir, 'cleared'),
+            join(session.dir, 'offload'),
             workspaceOwnerFile(opts.home, opts.cwd),
             join(opts.home, 'background'),
           ],

@@ -205,7 +205,17 @@ test('over limit keeps head and tail and writes full file', async () =>
     });
     assert.match(text(r), /^head/);
     assert.match(text(r), /tail$/);
-    assert.equal(await readFile(join(d, 'offload/a.txt'), 'utf8'), full);
+    const saved = text(r).match(/Full output saved to (.+?)\. Use read/)?.[1];
+    assert.ok(saved);
+    assert.equal(await readFile(saved, 'utf8'), full);
+    const next = await h.afterTool!({ type: 'toolCall', id: 'a', name: 'bash', args: {} }, createBashTool(''), {
+      content: [{ type: 'text', text: full + '\nsecond output' }],
+    });
+    const second = text(next).match(/Full output saved to (.+?)\. Use read/)?.[1];
+    assert.ok(second);
+    assert.notEqual(saved, second);
+    assert.equal(await readFile(saved, 'utf8'), full);
+    assert.equal(await readFile(second, 'utf8'), full + '\nsecond output');
   }));
 test('marker contains path and counts', async () =>
   withTmpDir(async (d) => {

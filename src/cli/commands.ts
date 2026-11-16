@@ -206,7 +206,7 @@ export async function handleCommand(
     }
   }
   if (command === 'ralph') {
-    if (!v.check || !rest.length) {
+    if (!v.check || (!rest.length && !v.resume)) {
       console.error('Usage: mh ralph "prompt" --check "command" [--max-iter N]');
       return 2;
     }
@@ -219,13 +219,14 @@ export async function handleCommand(
         prompt: rest.join(' '),
         checkCommand: v.check,
         maxIterations: v['max-iter'] ? Number(v['max-iter']) : 5,
+        checkpointSessionId: v.resume,
         maxTurns: v['max-turns'] ? Number(v['max-turns']) : 50,
         signal: controller.signal,
       });
       console.log(
         v.json
           ? JSON.stringify(r)
-          : `Ralph: ${r.reason} after ${r.iterations} iteration(s)\nProgress: ${r.progressFile}\n${stripEscapes(r.lastCheck?.output.slice(-3000) ?? '')}`,
+          : `Ralph: ${r.reason} after ${r.iterations} iteration(s)\nVerification: ${r.verification}\nCheckpoint session: ${r.checkpointSessionId}\nProgress: ${r.progressFile}\n${stripEscapes(r.lastCheck?.output.slice(-3000) ?? '')}`,
       );
       return r.reason === 'passed' ? 0 : r.reason === 'aborted' ? 130 : 1;
     } finally {

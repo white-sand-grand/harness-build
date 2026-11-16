@@ -4,7 +4,7 @@ import type { AgentEndReason, AgentEvent, ContextReplacement, DeferredBatch, Hoo
 import type { Provider, Usage, Message } from '../ai/index.ts';
 import { zeroUsage, addUsage, cost } from '../ai/index.ts';
 import { createSession } from '../session/index.ts';
-import type { SessionStore } from '../session/index.ts';
+import type { SessionStore, ClearingReceipt } from '../session/index.ts';
 import type { Asker } from '../hooks/permission.ts';
 import type { Config } from './config.ts';
 import { buildAgent } from './build-agent.ts';
@@ -43,6 +43,7 @@ export type StartRunOptions = {
   extraHooks?: Pick<Hooks, 'beforeTool' | 'modelContext'>;
   onSuspend?: (batch: DeferredBatch, reason: string) => Promise<{ requestId: string }>;
   resumeTools?: DeferredBatch;
+  protectedPaths?: string[];
 };
 export type StartRunResult = {
   reason: AgentEndReason;
@@ -59,17 +60,23 @@ export function persistReplacement(session: SessionStore, r: ContextReplacement)
       summary: r.summary ?? '',
       firstKeptEntryId: context.entryIds[Number(r.meta.firstKeptIndex)] ?? '',
       tokensBefore: Number(r.meta.tokensBefore ?? 0),
+      ...(r.meta.continuation ? { continuation: r.meta.continuation } : {}),
     });
   else {
+    const indices = r.meta.clearedIndices as number[] | undefined;
     const ids = new Set((r.meta.clearedToolCallIds as string[]) ?? []);
     session.append({
       type: 'clearing',
-      clearedEntryIds: session
-        .entries()
-        .filter((e) => e.type === 'message' && e.message.role === 'toolResult' && ids.has(e.message.toolCallId))
-        .map((e) => e.id),
+      clearedEntryIds: indices
+        ? indices.map((index) => context.entryIds[index]!).filter(Boolean)
+        : session
+            .entries()
+            .filter((e) => e.type === 'message' && e.message.role === 'toolResult' && ids.has(e.message.toolCallId))
+            .map((e) => e.id),
+      ...(Array.isArray(r.meta.receipts) ? { receipts: r.meta.receipts as ClearingReceipt[] } : {}),
     });
   }
+  session.flush();
 }
 export async function startRun(opts: StartRunOptions): Promise<StartRunResult> {
   const ownership = opts.workspaceOwnership ?? acquireWorkspace(opts.home, opts.cwd);

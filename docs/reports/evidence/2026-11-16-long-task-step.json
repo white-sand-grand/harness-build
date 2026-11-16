@@ -1,0 +1,131 @@
+{
+  "v": 1,
+  "date": "2026-11-16",
+  "status": "liveAcceptanceFailed",
+  "requestedModel": "step-5-preview",
+  "endpoint": "https://api.stepfun.com/step_plan/v1/messages",
+  "implementationHash": "9f8d242156ba9509471bd208f8decf0813efb98a8b4070f0344a816c9c04ccfa",
+  "benchmark": {
+    "repo": "exercism/problem-specifications",
+    "commit": "4812c213a2647e2034ad5ac78155ce9265cdd171",
+    "totalCases": 93,
+    "license": "MIT"
+  },
+  "trials": [
+    {
+      "id": "strong-compaction",
+      "mode": "ralph",
+      "contextWindow": 24000,
+      "outputLimit": 4096,
+      "clearAtRatio": 0.14,
+      "compactAtRatio": 0.32,
+      "keepRecentTokens": 1400,
+      "providerCalls": 34,
+      "httpRequests": 34,
+      "usage": {
+        "input": 121542,
+        "output": 31704,
+        "cacheRead": 86784,
+        "cacheWrite": 0
+      },
+      "passed": 0,
+      "total": 93,
+      "adoptedCompactions": 4,
+      "clearingEvents": 8,
+      "summaryAttempts": 8,
+      "processesDiffer": true,
+      "stop": "stuck",
+      "graderVersion": "v1",
+      "result": "No implementation changes; repeated exploration across three sessions."
+    },
+    {
+      "id": "calibrated-session",
+      "mode": "same-session-process-resume",
+      "contextWindow": 64000,
+      "outputLimit": 4096,
+      "clearAtRatio": 0.55,
+      "compactAtRatio": 0.7,
+      "keepRecentTokens": 6000,
+      "providerCalls": 9,
+      "httpRequests": 10,
+      "usage": {
+        "input": 17376,
+        "output": 5444,
+        "cacheRead": 28928,
+        "cacheWrite": 0
+      },
+      "passed": 53,
+      "total": 93,
+      "byExercise": {
+        "forth": {
+          "passed": 53,
+          "total": 55
+        },
+        "react": {
+          "passed": 0,
+          "total": 14
+        },
+        "sgf-parsing": {
+          "passed": 0,
+          "total": 24
+        }
+      },
+      "adoptedCompactions": 1,
+      "forcedCompactionBeforeProcessRestart": true,
+      "processesDiffer": true,
+      "stop": "tokenBudgetAdmission",
+      "graderVersion": "v2-offline-recheck",
+      "result": "Forth was written after real summary/restart; two definition-binding cases fail; react and sgf remain stubs."
+    }
+  ],
+  "grader": {
+    "v1Sha256": "5e1c97b91c4b69361f73a521b23e359686365cc794c6903fc22b6410a3e695e7",
+    "v2Sha256": "9005f1624b43452a3df344201c59b8bc88eab24a22f38c0e4b6d97256b6dc59d",
+    "correction": "v1 omitted the public evaluateBoth Forth property. v2 evaluates instructionsFirst and instructionsSecond on separate instances. Canonical data and model artifacts are unchanged. Original 52/93 and corrected 53/93 results are both retained.",
+    "v1OriginalScore": 52,
+    "v2CorrectedScore": 53,
+    "postRunCorrection": true
+  },
+  "knownUsage": {
+    "input": 138918,
+    "output": 37148,
+    "cacheRead": 115712,
+    "cacheWrite": 0
+  },
+  "knownReportedTokens": 291778,
+  "additionalPreflight": {
+    "providerCalls": 1,
+    "status": "maxTokens-at-16-output-limit",
+    "usage": "unavailable: initial ephemeral output was not retained; excluded from known usage"
+  },
+  "limitations": [
+    "One trial per configuration; model-task success is not demonstrated.",
+    "Window, continuation mode and task workflow instructions changed together; this is not a paired optimization comparison.",
+    "A real compaction and two-process continuation occurred; this does not demonstrate uninterrupted multi-hour reliability.",
+    "The corrected grader was run offline on unchanged model artifacts after all paid calls stopped."
+  ],
+  "offline": {
+    "coreTests": 509,
+    "desktopTests": 33,
+    "previousCoreTestsRetained": 495,
+    "sourceLines": 10640,
+    "kernelLines": 189,
+    "gate": "passed",
+    "windowsValidation": "context/three compactions/checkpoint/steering/process tests passed; grader adapter regression passed",
+    "secretScan": {
+      "files": 414,
+      "plaintextMatches": 0,
+      "unreadable": 0
+    }
+  },
+  "failingForthCases": [
+    {
+      "uuid": "ac12aaaf-26c6-4a10-8b3c-1c958fa2914c",
+      "description": "can use different words with the same name"
+    },
+    {
+      "uuid": "53f82ef0-2750-4ccb-ac04-5d8c1aefabb1",
+      "description": "can define word that uses word with the same name"
+    }
+  ]
+}

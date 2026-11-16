@@ -29,7 +29,13 @@ export async function compactSession(opts: StartRunOptions): Promise<boolean> {
           },
           opts.session,
         ),
-        r = await cfg.hooks.beforeModel?.(opts.session.context().messages, { force: true });
+        r = await cfg.hooks.beforeModel?.(opts.session.context().messages, {
+          force: true,
+          request: {
+            system: cfg.system,
+            tools: cfg.tools.map(({ name, description, parameters }) => ({ name, description, parameters })),
+          },
+        });
       if (!r) return false;
       persistReplacement(opts.session, r);
       return true;

@@ -26,6 +26,7 @@ import { replaceFileDurably } from '../../util/durable-file.ts';
 import { captureTaskContext, sourceEvents } from './context.ts';
 import { jobOutputDir, runBackgroundJob, type BackgroundJobHandler, type BackgroundJobResult } from './jobs.ts';
 import { fingerprint } from './contract.ts';
+import { requestTokens } from '../../context/tokens.ts';
 export { backgroundContract } from './contract.ts';
 
 export type BackgroundWorkerOptions = {
@@ -146,8 +147,7 @@ export class BackgroundWorker {
           });
           if (innerSignal.aborted) return stopped('Background run was cancelled.');
           const estimate =
-            Math.ceil((request.system.length + JSON.stringify(request.messages).length) / 4) +
-            (request.maxOutputTokens ?? request.model.maxOutputTokens);
+            requestTokens(request.messages, request) + (request.maxOutputTokens ?? request.model.maxOutputTokens);
           let reservation: string;
           try {
             reservation = store.reserveRequest(run, estimate);

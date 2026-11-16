@@ -152,6 +152,16 @@ test('summary failure leaves context unchanged', async () => {
   assert.equal(await hook(failingProvider('unavailable')).beforeModel!(messages, { force: true }), undefined);
   assert.deepEqual(messages, old);
 });
+test('truncated and tool-using summaries retain the original context', async () => {
+  for (const data of [
+    { text: 'partial goal', stopReason: 'maxTokens' as const },
+    { text: 'not a summary', toolCalls: [{ name: 'read', args: { path: 'a' } }] },
+  ]) {
+    const messages = structuredClone(old);
+    assert.equal(await hook(scripted(data)).beforeModel!(messages, { force: true }), undefined);
+    assert.deepEqual(messages, old);
+  }
+});
 test('forced compaction on overflow', async () => {
   const r = await hook().beforeModel!(old, { force: true });
   assert.equal(r?.kind, 'compaction');
